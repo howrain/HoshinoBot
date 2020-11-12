@@ -6,6 +6,7 @@ services:
     container_name: hoshinobot
     volumes:
       - /home/HoshinoBot/hoshino:/HoshinoBot/hoshino
+      - /home/HoshinoBot/res:/HoshinoBot/res
       - /home/HoshinoBot/run.py:/HoshinoBot/run.py
     ports:
       - "5000:5000"
