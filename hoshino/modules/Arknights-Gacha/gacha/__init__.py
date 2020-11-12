@@ -27,8 +27,8 @@ if not os.path.exists(os.path.join(FILE_PATH, 'gid_pool.json')):
 
 # 读取gid_pool.json的信息
 with open(os.path.join(FILE_PATH, 'gid_pool.json'), 'r', encoding='UTF-8') as f:
-    if f.startswith(u'\ufeff'):
-        f = f.encode('utf8')[3:].decode('utf8')
+    # if f.startswith(u'\ufeff'):
+    #     f = f.encode('utf8')[3:].decode('utf8')
     group_pool = json.load(f)
 
 
