@@ -8,7 +8,7 @@ from hoshino import R, Service, priv, util
 # basic function for debug, not included in Service('chat')
 @on_command('zai?', aliases=('在?', '在？', '在吗', '在么？', '在嘛', '在嘛？'), only_to_me=True)
 async def say_hello(session):
-    await session.send('はい！私はいつも貴方の側にいますよ！')
+    await session.send('我在！我一直都在你身边哦~')
 
 
 sv = Service('chat', visible=False)
@@ -16,7 +16,7 @@ sv = Service('chat', visible=False)
 
 @sv.on_fullmatch('沙雕机器人')
 async def say_sorry(bot, ev):
-    await bot.send(ev, 'ごめんなさい！嘤嘤嘤(〒︿〒)')
+    await bot.send(ev, R.img('别骂了.jpg').cqcode)
 
 
 @sv.on_fullmatch(('老婆', 'waifu', 'laopo'), only_to_me=True)
@@ -37,9 +37,9 @@ async def chat_mua(bot, ev):
     await bot.send(ev, '笨蛋~', at_sender=True)
 
 
-@sv.on_fullmatch('来点星奏')
+@sv.on_fullmatch('来点獭獭')
 async def seina(bot, ev):
-    await bot.send(ev, R.img('星奏.png').cqcode)
+    await bot.send(ev, R.img('tata/{}.png'.format(random.randint(1,60))).cqcode)
 
 
 @sv.on_fullmatch(('我有个朋友说他好了', '我朋友说他好了',))
