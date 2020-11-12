@@ -111,6 +111,7 @@ sv = Service('anti-holo', manage_priv=priv.SUPERUSER)
 
 @sv.on_keyword(SB_HOLO)
 async def anti_holo(bot: HoshinoBot, ev: CQEvent):
+    return
     priv.set_block_user(ev.user_id, timedelta(minutes=1))
     await util.silence(ev, 60, skip_su=False)
     await bot.send(ev, HAHAHA_VTB_TIANGOU.cqcode)
