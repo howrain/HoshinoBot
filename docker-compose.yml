@@ -1,0 +1,13 @@
+version: "3"
+services:
+  setubot1:
+    image: howrain/hoshinobot
+    restart: always
+    container_name: hoshinobot
+    volumes:
+      - /home/HoshinoBot/hoshino:/HoshinoBot/hoshino
+      - /home/HoshinoBot/run.py:/HoshinoBot/run.py
+
+    stdin_open: true
+    tty: true
+    command: python python run.py
