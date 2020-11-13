@@ -244,6 +244,7 @@ async def get_rss_news(rss_url):
                 'content': remove_html(summary),
                 'id': item['id'],
                 'images': await generate_image(get_image_url(summary)),
+                'time': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(get_published_time(item))),
             }
             news_list.append(news)
 
@@ -267,16 +268,17 @@ async def refresh_all_rss():
         rss_news[rss_url] = await get_rss_news(rss_url)
     save_data()
 
-
+# 格式化推送信息
 def format_msg(news):
-    msg = f"{news['feed_title']} 更新:\n"
+    msg = f"【{news['feed_title']}】更新了!:\n"
     # if not check_title_in_content(news['title'], news['content']):
     #     msg += f"\n{news['title']}"
-    msg += f"==========\n{remove_lf(news['content'])}\n{news['id']}"
+    msg += f"----------------------\n{remove_lf(news['content'])}"
     if news['images']:
         for image in news['images']:
             base64_str = f"base64://{base64.b64encode(image).decode()}"
             msg += f'[CQ:image,file={base64_str}]'
+    msg+=f"\n原链接：{news['id']}\n日期：{news['time']}"
     return msg
 
 
