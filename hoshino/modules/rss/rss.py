@@ -269,10 +269,10 @@ async def refresh_all_rss():
 
 
 def format_msg(news):
-    msg = f"{news['feed_title']}更新:\n{news['id']}"
-    if not check_title_in_content(news['title'], news['content']):
-        msg += f"\n{news['title']}"
-    msg += f"\n----------\n{remove_lf(news['content'])}"
+    msg = f"{news['feed_title']} 更新:\n"
+    # if not check_title_in_content(news['title'], news['content']):
+    #     msg += f"\n{news['title']}"
+    msg += f"\n==========\n{remove_lf(news['content'])}\n{news['id']}"
     if news['images']:
         for image in news['images']:
             base64_str = f"base64://{base64.b64encode(image).decode()}"
