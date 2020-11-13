@@ -14,7 +14,7 @@ async def say_hello(session):
 sv = Service('chat', visible=False)
 
 
-@sv.on_fullmatch('沙雕机器人')
+@sv.on_fullmatch(('沙雕机器人','沙雕獭獭'))
 async def say_sorry(bot, ev):
     await bot.send(ev, R.img('别骂了.jpg').cqcode)
 
