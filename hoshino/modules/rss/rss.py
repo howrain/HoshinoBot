@@ -244,7 +244,7 @@ async def get_rss_news(rss_url):
                 'content': remove_html(summary),
                 'id': item['id'],
                 'images': await generate_image(get_image_url(summary)),
-                'time': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(get_published_time(item))),
+                'time': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(get_published_time(item)+28800)),#需要加上8小时的秒数
             }
             news_list.append(news)
 
