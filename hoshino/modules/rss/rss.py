@@ -34,7 +34,8 @@ rss mode 0/1 : 设置消息模式 标准/简略
 详细说明见项目主页: https://github.com/zyujs/rss
 '''
 
-sv = hoshino.Service('rss', bundle='pcr订阅', help_= HELP_MSG)
+sv = hoshino.Service('rss', bundle='pcr订阅', help_=HELP_MSG)
+
 
 def save_data():
     path = os.path.join(os.path.dirname(__file__), 'data.json')
@@ -43,6 +44,7 @@ def save_data():
             json.dump(data, f, ensure_ascii=False, indent=2)
     except:
         traceback.print_exc()
+
 
 def load_data():
     path = os.path.join(os.path.dirname(__file__), 'data.json')
@@ -70,11 +72,13 @@ def load_data():
         traceback.print_exc()
     global default_rss
 
+
 load_data()
 
 default_rss = [
-    data['rsshub'] + '/bilibili/user/dynamic/353840826',    #pcr官方号
-    ]
+    data['rsshub'] + '/bilibili/user/dynamic/353840826',  # pcr官方号
+]
+
 
 async def query_data(url, proxy=''):
     try:
@@ -84,24 +88,28 @@ async def query_data(url, proxy=''):
     except:
         return None
 
+
 def get_image_url(desc):
     imgs = re.findall(r'<img.*?src="(.+?)".+?>', desc)
     return imgs
 
+
 def remove_html(content):
-    #移除html标签
+    # 移除html标签
     p = re.compile('<[^>]+>')
     content = p.sub("", content)
     return content
 
+
 def remove_lf(content):
     text = ''
     for line in content.splitlines():
-        line =  line.strip()
+        line = line.strip()
         if line:
             text += line + '\n'
     text = text.rstrip()
     return text
+
 
 async def generate_image(url_list):
     raw_images = []
@@ -116,9 +124,13 @@ async def generate_image(url_list):
         if image:
             try:
                 im = Image.open(BytesIO(image))
-                im = im.convert("RGBA")
-                raw_images.append(im)
+                # im = im.convert("RGBA")
+                # raw_images.append(im)
                 num += 1
+                img_byte_arr = BytesIO()  # 初始化一个空字节流
+                im.save(img_byte_arr, 'png')  # 把我们得图片以‘PNG’保存到空字节流
+                raw_images.append(img_byte_arr.getvalue())
+                del im
             except:
                 pass
         if num >= 9:
@@ -126,46 +138,49 @@ async def generate_image(url_list):
 
     if num == 0:
         return None
-    elif num == 1:
-        io = BytesIO()
-        raw_images[0].save(io, 'png')
-        return io.getvalue()
 
-    dest_img = None
-    box_size = 300
-    row = 3
-    border = 5
-    width = 0
-    width = 0
-    if num == 3 or num >= 5:    #3列
-        width = 900 + border * 2
-        height = math.ceil(num / 3) * (300 + border) - border
-    else: #2列
-        box_size = 400
-        row = 2
-        width = 800 + border
-        height = math.ceil(num / 2) * (400 + border) - border
-    dest_img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
+    return raw_images
+    # elif num == 1:
+    #     io = BytesIO()
+    #     raw_images[0].save(io, 'png')
+    #     return io.getvalue()
+    #
+    # dest_img = None
+    # box_size = 300
+    # row = 3
+    # border = 5
+    # width = 0
+    # width = 0
+    # if num == 3 or num >= 5:  # 3列
+    #     width = 900 + border * 2
+    #     height = math.ceil(num / 3) * (300 + border) - border
+    # else:  # 2列
+    #     box_size = 400
+    #     row = 2
+    #     width = 800 + border
+    #     height = math.ceil(num / 2) * (400 + border) - border
+    # dest_img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
+    #
+    # for i in range(num):
+    #     im = raw_images[i]
+    #     if im:
+    #         w, h = im.size
+    #         if w > h:
+    #             x0 = (w // 2) - (h // 2)
+    #             x1 = x0 + h
+    #             im = im.crop((x0, 0, x1, h))
+    #         elif h > w:
+    #             y0 = (h // 2) - (w // 2)
+    #             y1 = y0 + w
+    #             im = im.crop((0, y0, w, y1))
+    #         im = im.resize((box_size, box_size), Image.ANTIALIAS)
+    #         x = (i % row) * (box_size + border)
+    #         y = (i // row) * (box_size + border)
+    #         dest_img.paste(im, (x, y))
+    # io = BytesIO()
+    # dest_img.save(io, 'png')
+    # return io.getvalue()
 
-    for i in range(num):
-        im = raw_images[i]
-        if im:
-            w, h = im.size
-            if w > h:
-                x0 = (w // 2) - (h // 2)
-                x1 = x0 + h
-                im = im.crop((x0, 0, x1, h))
-            elif h > w:
-                y0 = (h // 2) - (w // 2)
-                y1 = y0 + w 
-                im = im.crop((0, y0, w, y1))
-            im = im.resize((box_size, box_size),Image.ANTIALIAS)
-            x = (i % row) * (box_size + border)
-            y = (i // row) * (box_size + border)
-            dest_img.paste(im, (x, y))
-    io = BytesIO()
-    dest_img.save(io, 'png')
-    return io.getvalue()
 
 def get_published_time(item):
     time_t = 0
@@ -175,6 +190,7 @@ def get_published_time(item):
         time_t = time.mktime(item['updated_parsed'])
     return time_t
 
+
 def get_latest_time(item_list):
     last_time = 0
     for item in item_list:
@@ -183,14 +199,15 @@ def get_latest_time(item_list):
             last_time = time
     return last_time
 
+
 def check_title_in_content(title, content):
-    title = title[:len(title)//2]
+    title = title[:len(title) // 2]
     title = title.replace('\n', '').replace('\r', '').replace(' ', '')
     content = content.replace('\n', '').replace('\r', '').replace(' ', '')
     if title in content:
         return True
     return False
-    
+
 
 async def get_rss_news(rss_url):
     news_list = []
@@ -217,7 +234,7 @@ async def get_rss_news(rss_url):
     for item in feed["entries"]:
         if get_published_time(item) > last_time:
             summary = item['summary']
-            #移除转发信息
+            # 移除转发信息
             i = summary.find('//转发自')
             if i > 0:
                 summary = summary[:i]
@@ -226,12 +243,13 @@ async def get_rss_news(rss_url):
                 'title': item['title'],
                 'content': remove_html(summary),
                 'id': item['id'],
-                'image': await generate_image(get_image_url(summary)),
-                }
+                'images': await generate_image(get_image_url(summary)),
+            }
             news_list.append(news)
 
     data['last_time'][rss_url] = get_latest_time(feed['entries'])
     return news_list
+
 
 async def refresh_all_rss():
     for item in default_rss:
@@ -241,7 +259,7 @@ async def refresh_all_rss():
         for rss_url in group_rss:
             if rss_url not in rss_news:
                 rss_news[rss_url] = []
-    #删除没有引用的项目的推送进度
+    # 删除没有引用的项目的推送进度
     for rss_url in list(data['last_time'].keys()):
         if rss_url not in rss_news:
             data['last_time'].pop(rss_url)
@@ -249,20 +267,24 @@ async def refresh_all_rss():
         rss_news[rss_url] = await get_rss_news(rss_url)
     save_data()
 
+
 def format_msg(news):
     msg = f"{news['feed_title']}更新:\n{news['id']}"
     if not check_title_in_content(news['title'], news['content']):
         msg += f"\n{news['title']}"
     msg += f"\n----------\n{remove_lf(news['content'])}"
-    if news['image']:
-        base64_str = f"base64://{base64.b64encode(news['image']).decode()}"
-        msg += f'[CQ:image,file={base64_str}]'
+    if news['images']:
+        for image in news['images']:
+            base64_str = f"base64://{base64.b64encode(image).decode()}"
+            msg += f'[CQ:image,file={base64_str}]'
     return msg
+
 
 def format_brief_msg(news):
     msg = f"{news['feed_title']}更新:\n{news['id']}"
     msg += f"\n----------\n{news['title']}"
     return msg
+
 
 async def group_process():
     bot = hoshino.get_bot()
@@ -290,6 +312,7 @@ async def group_process():
                         sv.logger.info(f'群 {gid} 推送失败')
                 await asyncio.sleep(1)
 
+
 async def rss_add(group_id, rss_url):
     group_id = str(group_id)
     proxy = ''
@@ -300,7 +323,7 @@ async def rss_add(group_id, rss_url):
     feed = feedparser.parse(res)
     if feed['bozo'] != 0:
         return f'无法解析rss源:{rss_url}'
-        
+
     if group_id not in data['group_rss']:
         data['group_rss'][group_id] = default_rss
     if rss_url not in set(data['group_rss'][group_id]):
@@ -309,6 +332,7 @@ async def rss_add(group_id, rss_url):
         return '订阅列表中已存在该项目'
     save_data()
     return '添加成功'
+
 
 def rss_remove(group_id, i):
     group_id = str(group_id)
@@ -320,19 +344,21 @@ def rss_remove(group_id, i):
     save_data()
     return '删除成功\n当前' + rss_get_list(group_id)
 
+
 def rss_get_list(group_id):
     group_id = str(group_id)
     if group_id not in data['group_rss']:
         data['group_rss'][group_id] = default_rss
     msg = '订阅列表:'
     num = len(data['group_rss'][group_id])
-    for i in range(num): 
+    for i in range(num):
         url = data['group_rss'][group_id][i]
         url = re.sub(r'http[s]*?://.*?/', '/', url)
         msg += f"\n{i}. {url}"
     if num == 0:
         msg += "\n空"
     return msg
+
 
 def rss_set_mode(group_id, mode):
     group_id = str(group_id)
@@ -345,6 +371,7 @@ def rss_set_mode(group_id, mode):
         msg = '已设置为标准模式'
     save_data()
     return msg
+
 
 @sv.on_prefix('rss')
 async def rss_cmd(bot, ev):
@@ -364,7 +391,7 @@ async def rss_cmd(bot, ev):
             msg = await rss_add(group_id, args[1])
         else:
             msg = '需要附带rss地址'
-    elif args[0] == 'addb' or  args[0] == 'add-bilibili':
+    elif args[0] == 'addb' or args[0] == 'add-bilibili':
         if not is_admin:
             msg = '权限不足'
         elif len(args) >= 2 and args[1].isdigit():
@@ -372,7 +399,7 @@ async def rss_cmd(bot, ev):
             msg = await rss_add(group_id, rss_url)
         else:
             msg = '需要附带up主id'
-    elif args[0] == 'addr' or  args[0] == 'add-route':
+    elif args[0] == 'addr' or args[0] == 'add-route':
         if not is_admin:
             msg = '权限不足'
         elif len(args) >= 2:
@@ -400,6 +427,7 @@ async def rss_cmd(bot, ev):
     else:
         msg = '参数错误'
     await bot.send(ev, msg)
+
 
 @sv.scheduled_job('interval', minutes=5)
 async def job():
