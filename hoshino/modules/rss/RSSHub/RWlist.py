@@ -8,12 +8,13 @@ file_path = './data/'
 # 读取记录
 def readRss() -> list:
     rss_list=[]
-    with codecs.open(file_path+"rss.json", 'r','utf-8') as load_f:
-        rss_list_json = json.load(load_f)
-        for rss_one in rss_list_json:
-            tmp_rss=RSS_class.rss('','','','')
-            tmp_rss.__dict__=json.loads(rss_one)
-            rss_list.append(tmp_rss)
+    if os.path.exists(file_path+"rss.json"):
+        with codecs.open(file_path+"rss.json", 'r','utf-8') as load_f:
+            rss_list_json = json.load(load_f)
+            for rss_one in rss_list_json:
+                tmp_rss=RSS_class.rss('','','','')
+                tmp_rss.__dict__=json.loads(rss_one)
+                rss_list.append(tmp_rss)
     return rss_list
 # 写入记录
 def writeRss(rss_list:list) :
