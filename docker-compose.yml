@@ -5,10 +5,10 @@ services:
     restart: always
     container_name: hoshinobot
     volumes:
-      - /home/HoshinoBot/hoshino:/HoshinoBot/hoshino
-      - /home/HoshinoBot/res:/HoshinoBot/res
-      - /home/HoshinoBot/data:/HoshinoBot/data
-      - /home/HoshinoBot/run.py:/HoshinoBot/run.py
+      - /home/HoshinoBot/hoshino:/home/HoshinoBot/hoshino
+      - /home/HoshinoBot/res:/home/HoshinoBot/res
+      - /home/HoshinoBot/data:/home/HoshinoBot/data
+      - /home/HoshinoBot/run.py:/home/HoshinoBot/run.py
     ports:
       - "5000:5000"
     stdin_open: true
