@@ -131,4 +131,3 @@ venv.bak/
 # mypy
 .mypy_cache/
 /.idea/
-/hoshino/modules/rss_bake

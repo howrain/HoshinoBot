@@ -1,15 +1,2 @@
-googletrans
-httpx
-emoji
-nonebot
-requests
-feedparser
-apscheduler
-Pillow
-pyquery
-retrying
-lxml
-aiohttp
-arrow
-psutil
-
+feedparser~=5.2
+pillow~=6.2
