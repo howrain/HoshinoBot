@@ -232,7 +232,9 @@ async def get_rss_news(rss_url):
     last_time = data['last_time'][rss_url]
 
     for item in feed["entries"]:
-        if get_published_time(item) > last_time:
+        published_time=get_published_time(item)
+        if published_time > last_time:
+            sv.logger.info("[rss]检测到最新推送，推送发布时间:{},最后更新时间:{}".format(published_time,last_time))
             summary = item['summary']
             # 移除转发信息
             i = summary.find('//转发自')
