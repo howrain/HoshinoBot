@@ -95,8 +95,10 @@ def get_image_url(desc):
 
 
 def remove_html(content):
+    sv.logger.info("[rss]移除html标签前：\n"+content)
     # 将html换行符转为换行
-    content_temp = re.sub(r'<br[/]?>', '\n', content)
+    content_temp = content.replace("<br>", "\n").replace("<br/>", "\n")
+    # content_temp = re.sub('<br[/]?>', '\n', content)
     # 移除html标签
     p = re.compile('<[^>]+>')
     content = p.sub("", content_temp)
@@ -234,10 +236,11 @@ async def get_rss_news(rss_url):
         return news_list
 
     last_time = data['last_time'][rss_url]
-
+    isnew=False
     for item in feed["entries"]:
         published_time=get_published_time(item)
         if published_time > last_time:
+            isnew=True
             published_time_f=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(published_time))
             last_time_f=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_time))
             sv.logger.info("[rss]检测到最新推送，推送发布时间:{},最后更新时间:{}".format(published_time_f,last_time_f))
@@ -255,8 +258,10 @@ async def get_rss_news(rss_url):
                 'time': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(get_published_time(item)+28800)),#需要加上8小时的秒数
             }
             news_list.append(news)
-
-    data['last_time'][rss_url] = get_latest_time(feed['entries'])
+    if isnew:
+        data['last_time'][rss_url] = get_latest_time(feed['entries'])
+        last_time_f = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(data['last_time'][rss_url]))
+        sv.logger.info("[rss]存在新的推送，已更新完成，最后更新时间:{}".format(last_time_f))
     return news_list
 
 
