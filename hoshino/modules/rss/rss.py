@@ -97,7 +97,7 @@ def get_image_url(desc):
 def remove_html(content):
     sv.logger.info("[rss]移除html标签前：\n"+content)
     # 将html换行符转为换行
-    content_temp = content.replace("<br>", "\n").replace("<br/>", "\n")
+    content_temp = content.strip().replace("<br>", "\n").replace("<br/>", "\n")
     # content_temp = re.sub('<br[/]?>', '\n', content)
     # 移除html标签
     p = re.compile('<[^>]+>')
