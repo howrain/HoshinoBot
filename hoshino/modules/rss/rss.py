@@ -95,9 +95,11 @@ def get_image_url(desc):
 
 
 def remove_html(content):
+    # 将html换行符转为换行
+    content_temp = re.sub(r'<br[/]?>', '\n', content)
     # 移除html标签
     p = re.compile('<[^>]+>')
-    content = p.sub("", content)
+    content = p.sub("", content_temp)
     return content
 
 
@@ -234,7 +236,9 @@ async def get_rss_news(rss_url):
     for item in feed["entries"]:
         published_time=get_published_time(item)
         if published_time > last_time:
-            sv.logger.info("[rss]检测到最新推送，推送发布时间:{},最后更新时间:{}".format(published_time,last_time))
+            published_time_f=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(published_time))
+            last_time_f=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_time))
+            sv.logger.info("[rss]检测到最新推送，推送发布时间:{},最后更新时间:{}".format(published_time_f,last_time_f))
             summary = item['summary']
             # 移除转发信息
             i = summary.find('//转发自')
