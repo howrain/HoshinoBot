@@ -100,6 +100,7 @@ def remove_html(content):
     # 移除html标签
     p = re.compile('<[^>]+>')
     content = p.sub("", content_temp)
+    sv.logger.info("[rss]remove_html:\n"+content)
     return content
 
 
@@ -110,6 +111,7 @@ def remove_lf(content):
         if line:
             text += line + '\n'
     text = text.rstrip()
+    sv.logger.info("[rss]remove_lf:\n" + text)
     return text
 
 
