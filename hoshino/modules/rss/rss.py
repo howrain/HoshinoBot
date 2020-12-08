@@ -244,12 +244,15 @@ async def get_rss_news(rss_url):
         return news_list
 
     last_time = data['last_time'][rss_url]
-    isnew = False
     last_addr = []
+    if rss_url in data['last_addr']:
+        last_addr = data['last_addr'][rss_url]
+    isnew = False
+    new_last_addr = []
     for item in feed["entries"]:
         published_time = get_published_time(item)
         # 新增加判断 如果链接有发送过，就不再发送了
-        if published_time > last_time and item['id'] not in data['last_addr'][rss_url]:
+        if published_time > last_time and item['id'] not in last_addr:
             isnew = True
             published_time_f = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(published_time))
             last_time_f = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_time))
@@ -272,10 +275,10 @@ async def get_rss_news(rss_url):
             }
             news_list.append(news)
             # 将最后一次获取到的所有链接添加进数组
-            last_addr.append(item['id'])
+            new_last_addr.append(item['id'])
     if isnew:
         data['last_time'][rss_url] = get_latest_time(feed['entries'])
-        data['last_addr'][rss_url] = last_addr
+        data['last_addr'][rss_url] = new_last_addr
         last_time_f = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(data['last_time'][rss_url]))
         sv.logger.info("[rss]存在新的推送，已更新完成，最后更新时间:{}".format(last_time_f))
     return news_list
