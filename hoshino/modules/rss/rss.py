@@ -311,9 +311,9 @@ def format_msg(news):
     if news['images_addr']:
         for image in news['images_addr']:
             msg += f'[CQ:image,url={image}]'
-    if news['video_posters_addrs']:
+    if news['video_posters_addr']:
         msg += '\n视频封面:'
-        for video_poster in news['video_posters_addrs']:
+        for video_poster in news['video_posters_addr']:
             msg += f'[CQ:image,url={video_poster}]'
     msg += f"\n原链接：{news['id']}\n日期：{news['time']}"
     return msg
