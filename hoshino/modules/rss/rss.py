@@ -20,6 +20,7 @@ data = {
     'proxy': '',
     'proxy_urls': [],
     'last_time': {},
+    'last_addr': {},
     'group_rss': {},
     'group_mode': {},
 }
@@ -60,6 +61,8 @@ def load_data():
                 data['rsshub'] = d['rsshub']
             if 'last_time' in d:
                 data['last_time'] = d['last_time']
+            if 'last_addr' in d:
+                data['last_addr'] = d['last_addr']
             if 'group_rss' in d:
                 data['group_rss'] = d['group_rss']
             if 'group_mode' in d:
@@ -94,15 +97,20 @@ def get_image_url(desc):
     return imgs
 
 
+def get_video_poster_url(desc):
+    posters = re.findall(r'<video.*?poster="(.+?)".+?>', desc)
+    return posters
+
+
 def remove_html(content):
-    sv.logger.info("[rss]移除html标签前：\n"+content)
+    sv.logger.info("[rss]移除html标签前：\n" + content)
     # 将html换行符转为换行
     # content_temp = content.strip().replace("<br>", "\n").replace("<br/>", "\n")
     content_temp = re.sub(r'<br\s{0,1}/?>', '\n', content)
     # 移除html标签
     p = re.compile('<[^>]+>')
     content = p.sub("", content_temp)
-    sv.logger.info("[rss]remove_html:\n"+content)
+    sv.logger.info("[rss]remove_html:\n" + content)
     return content
 
 
@@ -236,14 +244,16 @@ async def get_rss_news(rss_url):
         return news_list
 
     last_time = data['last_time'][rss_url]
-    isnew=False
+    isnew = False
+    last_addr = []
     for item in feed["entries"]:
-        published_time=get_published_time(item)
-        if published_time > last_time:
-            isnew=True
-            published_time_f=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(published_time))
-            last_time_f=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_time))
-            sv.logger.info("[rss]检测到最新推送，推送发布时间:{},最后更新时间:{}".format(published_time_f,last_time_f))
+        published_time = get_published_time(item)
+        # 新增加判断 如果链接有发送过，就不再发送了
+        if published_time > last_time and item['id'] not in data['last_addr']:
+            isnew = True
+            published_time_f = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(published_time))
+            last_time_f = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_time))
+            sv.logger.info("[rss]检测到最新推送，推送发布时间:{},最后更新时间:{}".format(published_time_f, last_time_f))
             summary = item['summary']
             # 移除转发信息
             i = summary.find('//转发自')
@@ -254,12 +264,18 @@ async def get_rss_news(rss_url):
                 'title': item['title'],
                 'content': remove_html(summary),
                 'id': item['id'],
-                'images': await generate_image(get_image_url(summary)),
-                'time': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(get_published_time(item)+28800)),#需要加上8小时的秒数
+                # 'images': await generate_image(get_image_url(summary)),
+                'images_addr': get_image_url(summary),
+                'video_posters_addr': get_video_poster_url(summary),
+                'time': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(get_published_time(item) + 28800)),
+                # 需要加上8小时的秒数
             }
             news_list.append(news)
+            # 将最后一次获取到的所有链接添加进数组
+            last_addr.append(item['id'])
     if isnew:
         data['last_time'][rss_url] = get_latest_time(feed['entries'])
+        data['last_addr'][rss_url] = last_addr
         last_time_f = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(data['last_time'][rss_url]))
         sv.logger.info("[rss]存在新的推送，已更新完成，最后更新时间:{}".format(last_time_f))
     return news_list
@@ -281,17 +297,25 @@ async def refresh_all_rss():
         rss_news[rss_url] = await get_rss_news(rss_url)
     save_data()
 
+
 # 格式化推送信息
 def format_msg(news):
     msg = f"【{news['feed_title']}】更新了!:\n"
     # if not check_title_in_content(news['title'], news['content']):
     #     msg += f"\n{news['title']}"
     msg += f"----------------------\n{remove_lf(news['content'])}"
-    if news['images']:
-        for image in news['images']:
-            base64_str = f"base64://{base64.b64encode(image).decode()}"
-            msg += f'[CQ:image,file={base64_str}]'
-    msg+=f"\n原链接：{news['id']}\n日期：{news['time']}"
+    # if news['images']:
+    #     for image in news['images']:
+    #         base64_str = f"base64://{base64.b64encode(image).decode()}"
+    #         msg += f'[CQ:image,file={base64_str}]'
+    if news['images_addr']:
+        for image in news['images_addr']:
+            msg += f'[CQ:image,url={image}]'
+    if news['video_posters_addrs']:
+        msg += '\n视频封面:'
+        for video_poster in news['video_posters_addrs']:
+            msg += f'[CQ:image,url={video_poster}]'
+    msg += f"\n原链接：{news['id']}\n日期：{news['time']}"
     return msg
 
 
