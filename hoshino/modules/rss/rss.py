@@ -249,7 +249,7 @@ async def get_rss_news(rss_url):
     for item in feed["entries"]:
         published_time = get_published_time(item)
         # 新增加判断 如果链接有发送过，就不再发送了
-        if published_time > last_time and item['id'] not in data['last_addr']:
+        if published_time > last_time and item['id'] not in data['last_addr'][rss_url]:
             isnew = True
             published_time_f = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(published_time))
             last_time_f = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_time))
