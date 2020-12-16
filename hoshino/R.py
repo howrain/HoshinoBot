@@ -51,6 +51,16 @@ class ResImg(ResObj):
         except FileNotFoundError:
             hoshino.logger.error(f'缺少图片资源：{self.path}')
             raise
+class ResVoice(ResObj):
+    @property
+    def cqcode(self) -> MessageSegment:
+        if hoshino.config.RES_PROTOCOL == 'http':
+            return MessageSegment.record(self.url)
+        elif hoshino.config.RES_PROTOCOL == 'file':
+            return MessageSegment.record(f'file:///{os.path.abspath(self.path)}')
+        else:
+            return MessageSegment.text('[语音出错]')
+
 
 
 def get(path, *paths):
@@ -58,3 +68,6 @@ def get(path, *paths):
 
 def img(path, *paths):
     return ResImg(os.path.join('img', path, *paths))
+def voice(path, *paths):
+    return ResVoice(os.path.join('voice_ci', path, *paths))
+    return
