@@ -24,8 +24,8 @@ MULTIPLE_VOICE_ESTERTION_ID_LIST = ['0044']
 ONE_TURN_TIME = 30
 HOSHINO_RES_PATH = os.path.expanduser(hoshino.config.RES_DIR)
 DIR_PATH = os.path.join(HOSHINO_RES_PATH, 'voice_ci')
-# DB_PATH = os.path.join(os.path.dirname(__file__), 'pcr_voice_guess.db')
-DB_PATH = os.path.expanduser("~/.hoshino/pcr_voice_guess.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), 'pcr_voice_guess.db')
+# DB_PATH = os.path.expanduser("~/.hoshino/pcr_voice_guess.db")
 
 gm = GameMaster(DB_PATH)
 
