@@ -64,6 +64,12 @@ def pic2b64(pic:Image) -> str:
     base64_str = base64.b64encode(buf.getvalue()).decode()
     return 'base64://' + base64_str
 
+def file2b64(file:str) -> str:
+    pic = Image.open(file)
+    buf = BytesIO()
+    pic.save(buf, format='PNG')
+    base64_str = base64.b64encode(buf.getvalue()).decode()
+    return 'base64://' + base64_str
 
 def fig2b64(plt:plt) -> str:
     buf = BytesIO()
