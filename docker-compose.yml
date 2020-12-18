@@ -14,5 +14,6 @@ services:
     stdin_open: true
     tty: true
     command:
+      - cd /home/HoshinoBot
       - pip install -r requirements.txt
       - python run.py
