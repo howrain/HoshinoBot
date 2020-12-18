@@ -7,7 +7,7 @@ try:
 except:
 	import json
 
-sv = Service('空调', visible= True, enable_on_default= False, bundle='空调', help_='''
+sv = Service('空调', visible= True, enable_on_default= True, bundle='空调', help_='''
 - [开空调] 打开空调（第一次使用时会自动安装空调）
 - [关空调] 关闭空调
 - [当前温度] 查看当前风速、设定温度、环境温度

@@ -5,12 +5,14 @@ from  datetime import datetime
 from hoshino import util
 from hoshino import Service
 from .data_source import add_text,pic_to_b64
+from hoshino.typing import MessageSegment, CQEvent
 
-sv = Service('报时', visible= False, enable_on_default= True, bundle='报时', help_='''
+sv = Service('报时', visible= True, enable_on_default= True, bundle='报时', help_='''
 生成一张报时图
 '''.strip())
 @sv.on_fullmatch('报时')
 async def showtime(bot, event):
+    global save_path
     now = datetime.now()
     hour = now.hour
     minute = now.minute
@@ -45,14 +47,13 @@ async def showtime(bot, event):
         template_path = os.path.join(os.path.dirname(__file__),'template7.jpg')
         save_path = os.path.join(os.path.dirname(__file__),'nowtime.jpg')
         add_text(template_path,save_path,f'{hour_str}点{minute_str}分',textsize=110,textfill='black',position=(260,400))        
-	#修改此行调整文字大小位置
+    #修改此行调整文字大小位置
     '''
     textsize文字大小
     textfill 文字颜色，black 黑色，blue蓝色，white白色，yellow黄色，red红色
     position是距离图片左上角偏移量，第一个数是宽方向，第二个数是高方向
     f'{hour_str}\n点\n{minute_str}\n分\n了\n !' 代表报时文本，已设置为竖排，\n为换行  
     '''
-    base64_str = pic_to_b64(save_path)
-    reply = f'[CQ:image,file={base64_str}]'
+    reply = MessageSegment.image(util.file2b64(f'{save_path}'))
     await bot.send(event,reply,at_sender=False)
 
