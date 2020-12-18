@@ -2,9 +2,9 @@ import os
 import base64
 from PIL import Image, ImageFont, ImageDraw
 
-font_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),"msyh.ttc")
+font_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),"simhei.ttf")
 
-def add_text(template_path,save_path,text:str,textsize:int,font='simhei.ttf',textfill='black',position:tuple=(0,0)):
+def add_text(template_path,save_path,text:str,textsize:int,font=font_path,textfill='black',position:tuple=(0,0)):
     #textsize 文字大小
     #font 字体，默认微软雅黑
     #textfill 文字颜色，默认黑色
