@@ -22,3 +22,5 @@ pyquery
 retrying
 arrow
 psutil
+pyyaml
+sqlitedict
