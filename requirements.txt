@@ -24,3 +24,5 @@ arrow
 psutil
 pyyaml
 sqlitedict
+filetype
+opencv
