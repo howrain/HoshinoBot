@@ -25,4 +25,5 @@ psutil
 pyyaml
 sqlitedict
 filetype
-opencv
+opencv-python
+opencv-contrib-python
