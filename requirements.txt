@@ -25,7 +25,7 @@ psutil
 pyyaml~=5.3.1
 sqlitedict~=1.7.0
 filetype~=1.0.7
-opencv-python
+opencv-python~=4.5.1.48
 opencv-contrib-python
 asyncio~=3.4.3
 ujson~=1.35
