@@ -130,7 +130,7 @@ async def do_query(id_list, user_id, region=1):
         "ts": int(time.time()),
         "region": region,
     }
-    logger.debug(f"Arena query {payload=}")
+    logger.debug(f"Arena query {payload}")
     try:
         resp = await aiorequests.post(
             "https://api.pcrdfans.com/x/v1/search",
