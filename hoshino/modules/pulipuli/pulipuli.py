@@ -71,7 +71,7 @@ def getAvBvFromNormalLink(link):
         r'(bilibili\.com\/video\/)?(?:[Aa][Vv]([0-9]+)|([Bb][Vv][0-9a-zA-Z]+))', link)
     if len(search) <= 0:
         return search
-    result = {'aid': search[0][0], 'bvid': search[0][1]}
+    result = {'aid': search[0][1], 'bvid': search[0][2]}
     return result
 
 
