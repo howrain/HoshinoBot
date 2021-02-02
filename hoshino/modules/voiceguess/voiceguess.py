@@ -9,7 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 
 import hoshino
-from hoshino import Service,R
+from hoshino import Service
 from hoshino.modules.priconne import chara
 from hoshino.typing import MessageSegment, CQEvent
 from . import GameMaster
@@ -24,7 +24,6 @@ MULTIPLE_VOICE_ESTERTION_ID_LIST = ['0044']
 ONE_TURN_TIME = 30
 HOSHINO_RES_PATH = os.path.expanduser(hoshino.config.RES_DIR)
 DIR_PATH = os.path.join(HOSHINO_RES_PATH, 'voice_ci')
-# DB_PATH = os.path.join(os.path.dirname(__file__), 'pcr_voice_guess.db')
 DB_PATH = os.path.expanduser("~/.hoshino/pcr_voice_guess.db")
 
 gm = GameMaster(DB_PATH)
@@ -107,10 +106,8 @@ async def cygames_voice_guess(bot, ev: CQEvent):
         file_list = os.listdir(DIR_PATH)
         chosen_file = random.choice(file_list)
         file_path = os.path.join(DIR_PATH, chosen_file)
-        # hoshino.logger.info('语音路径：'+file_path)
-        # 因为服务器用的http资源 暂时改为http路径
         await bot.send(ev, f'猜猜这个“cygames”语音来自哪位角色? ({ONE_TURN_TIME}s后公布答案)')
-        await bot.send(ev, R.voice(chosen_file))
+        await bot.send(ev, MessageSegment.record(f'file:///{os.path.abspath(file_path)}'))
         estertion_id = chosen_file[7:10]
         chara_id = estertion_id2chara_id(int(estertion_id))
         game.answer = chara_id
@@ -136,11 +133,8 @@ async def voice_guess(bot, ev: CQEvent):
         chara_list = os.listdir(chara_path)
         chosen_file = random.choice(chara_list)
         file_path = os.path.join(chara_path, chosen_file)
-        hoshino.logger.info('语音路径：' + file_path)
-        # 因为服务器用的http资源 暂时改为http路径
         await bot.send(ev, f'猜猜这段语音来自哪位角色? ({ONE_TURN_TIME}s后公布答案)')
-        # await bot.send(ev, MessageSegment.record(f'file:///{os.path.abspath(file_path)}'))
-        await bot.send(ev, MessageSegment.record(file_path))
+        await bot.send(ev, MessageSegment.record(f'file:///{os.path.abspath(file_path)}'))
         #兼容"小仓唯骂我"插件的语音资源
         if chosen_chara == 'mawo':
             game.answer = 1036
@@ -151,7 +145,6 @@ async def voice_guess(bot, ev: CQEvent):
         # 结算
         if game.winner:
             return
-        gm.exit_game(ev.group_id)
         c = chara.fromid(game.answer)
     await bot.send(ev, f"正确答案是: {c.name} {c.icon.cqcode}\n很遗憾，没有人答对~")
 
