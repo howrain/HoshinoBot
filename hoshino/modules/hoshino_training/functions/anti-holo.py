@@ -10,7 +10,7 @@ from hoshino.modules.hoshino_training.util.keyword import *
 
 #从HoshinoBot\hoshino\modules\groupmaster\anti_holo.py的SB_HOLO触发词中删除指定词语
 WHITE_LIST = '''
-可可
+可可 小狐狸
 '''.split()
 
 #额外的anti-holo触发词
