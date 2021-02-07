@@ -3,6 +3,7 @@ import base64
 import os
 import random
 import sqlite3
+import math
 from datetime import datetime, timedelta
 from io import BytesIO
 from PIL import Image
@@ -13,43 +14,34 @@ from hoshino.typing import CQEvent
 from hoshino.util import DailyNumberLimiter
 import copy
 
-sv = Service('pcr-duel', bundle='贵族决斗', enable_on_default=True, help_="""发送 创建贵族 可以在本群创建自己的贵族，会被随机分配一个PCR女友。
-发送 查询贵族 可以查询自己的贵族状态。
-发送 贵族约会/招募女友 可以花费300金币招募一个女友，女友数不能超过爵位上限。
-发送 升级贵族/升级爵位 可以花费金币提升自己的爵位,提升爵位时女友数需已达到上限。
-发送 贵族决斗+艾特 可以向另一个贵族发起决斗，两个人必须都是贵族且已拥有女友，输者会随机被抢走一个女友。
-发送 领金币 可以在金币归零时领取50金币。
-发送 查金币 可以查询自己现在的金币数。
-发送 贵族签到 可以每天一次的领取100金币。
-发送 为(用户qq)充值xx金币，可以为该用户充值金币。例如 为123456充值100金币(该功能仅限机器人管理员，可以自己修改权限)
-发送 重置决斗 可以解锁决斗开关。(限管理员以上，这个仅用于决斗卡死无法再开的时候)
-发送 查女友+PCR角色名 可以查询某位pcr角色的归属。
-发送 分手+PCR角色名 可以和角色分手(需要支付分手费)。
-发送 贵族帮助 可以查看游戏说明书。
-发送 声望系统帮助 可以查看声望系统说明书。
-""")
+sv = Service('pcr-duel', enable_on_default=True)
 DUEL_DB_PATH = os.path.expanduser('~/.hoshino/pcr_duel.db')
 SCORE_DB_PATH = os.path.expanduser('~/.hoshino/pcr_running_counter.db')
-BLACKLIST_ID = [1000, 1072, 1908, 4031, 9000, 1069, 1073, 1701, 1702, 1067, 1907, 1909, 1911, 1913, 1914, 1915, 1916,
+BLACKLIST_ID = [1000, 1072, 1908, 4031, 9000, 1069, 1073, 1701, 1702, 1067, 1907, 1909, 1910, 1911, 1913, 1914, 1915,
+                1916,
                 1917, 1918, 1919, 1920, 9601, 9602, 9603, 9604]  # 黑名单ID
 WAIT_TIME = 30  # 对战接受等待时间
 DUEL_SUPPORT_TIME = 30  # 赌钱等待时间
 DB_PATH = os.path.expanduser("~/.hoshino/pcr_duel.db")
 SIGN_DAILY_LIMIT = 1  # 机器人每天签到的次数
-DUEL_DAILY_LIMIT = 5  # 每个人每日发起决斗上限
+DUEL_DAILY_LIMIT = 999  # 每个人每日发起决斗上限
 RESET_HOUR = 0  # 每日使用次数的重置时间，0代表凌晨0点，1代表凌晨1点，以此类推
-GACHA_COST = 300  # 抽老婆需求
-ZERO_GET_AMOUNT = 50  # 没钱补给量
+GACHA_COST = 500  # 抽老婆需求
+ZERO_GET_AMOUNT = 150  # 没钱补给量
 WIN_NUM = 1  # 下注获胜赢得的倍率
 BREAK_UP_SWITCH = True  # 分手系统开关
 LEVEL_GIRL_NEED = {
-    "1": 3,
-    "2": 5,
-    "3": 7,
-    "4": 10,
-    "5": 15,
-    "6": 20,
-    "7": 30
+    "1": 1,
+    "2": 2,
+    "3": 3,
+    "4": 5,
+    "5": 7,
+    "6": 10,
+    "7": 15,
+    "8": 20,
+    "9": 30,
+    "10": 40,
+    "20": 60
 }  # 升级所需要的老婆，格式为["等级“: 需求]
 LEVEL_COST_DICT = {
     "1": 0,
@@ -57,8 +49,23 @@ LEVEL_COST_DICT = {
     "3": 300,
     "4": 500,
     "5": 1000,
-    "6": 2000
+    "6": 3000,
+    "7": 5000,
+    "8": 10000,
+    "9": 15000
 }  # 升级所需要的钱钱，格式为["等级“: 需求]
+LEVEL_SW_NEED = {
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 0,
+    "6": 0,
+    "7": 1000,
+    "8": 1500,
+    "9": 2000
+}  # 升级所需要的声望，格式为["等级“: 需求]
+LEVEL_SW_NEED
 Addgirlfail = [
     '你参加了一场贵族舞会，热闹的舞会场今天竟然没人同你跳舞。',
     '你邀请到了心仪的女友跳舞，可是跳舞时却踩掉了她的鞋，她生气的离开了。',
@@ -124,7 +131,6 @@ Login600 = [
 ]
 
 
-# 帮助中猜角色猜头像获胜加金币为个人魔改，如果不魔改可以删掉这两行描述。
 @sv.on_fullmatch(['贵族决斗帮助', '贵族帮助', '贵族指令'])
 async def duel_help(bot, ev: CQEvent):
     msg = '''
@@ -143,15 +149,35 @@ async def duel_help(bot, ev: CQEvent):
    10.重置决斗(限管理，决
    斗卡住时用)
    11.分手+角色名(需分手费)
+   12.贵族等级表
+   13.兑换声望+数量(兑换比例1：10000)
+   14.转账(为@qq转账xxx金币)
+   15.女友交易(用xxx金币与@qq交易女友+角色名)，需要收10%交易手续费
    
   一个女友只属于一位群友
-  猜角色/猜头像获胜
-  每日可获得6次100金币
+
   
   声望系统国王后开启，
   具体指令发送:
   声望系统帮助
 ╚                                        ╝
+'''
+    await bot.send(ev, msg)
+
+
+@sv.on_fullmatch(['贵族表', '贵族等级表'])
+async def duel_biao(bot, ev: CQEvent):
+    msg = '''"1": "平民",  最多可持有1名女友，每日签到额外获得100金币，初始等级。
+"2": "骑士",  升级需要100金币，最多可持有2名女友，每日签到额外获得200金币，保持等级最少持有1名女友。
+"3": "准男爵", 升级需要300金币，最多可持有3名女友，每日签到额外获得300金币，保持等级最少持有2名女友。
+"4": "男爵",升级需要500金币，最多可持有5名女友，每日签到额外获得400金币，保持等级最少持有3名女友。
+"5": "子爵",升级需要1000金币，最多可持有7名女友，每日签到额外获得500金币，保持等级最少持有5名女友。
+"6": "伯爵",升级需要3000金币，最多可持有10名女友，每日签到额外获得600金币，保持等级最少持有7名女友，可以开启声望系统。
+"7": "侯爵",升级需要1000声望和5000金币，最多可持有15名女友，每日签到额外获得700金币，保持等级最少持有9名女友。
+"8": "公爵",升级需要1500声望和10000金币，最多可持有20名女友，每日签到额外获得800金币，不再会掉级，可拥有一名妻子。
+"9": "国王",升级需要2000声望和15000金币，最多可持有30名女友，每日签到额外获得900金币，不再会掉级，可拥有一名妻子。
+"10": "皇帝"升级需要4000声望和20000金币，最多可持有40名女友，每日签到额外获得1000金币，不再会掉级，可拥有一名妻子。
+"11": "神"升级需要10000声望和25000金币，最多可持有60名女友，每日签到额外获得2000金币，当输光女友时贬为平民，可拥有一名妻子。
 '''
     await bot.send(ev, msg)
 
@@ -531,7 +557,7 @@ class DuelCounter:
                 (gid, uid, level),
             )
 
-    # 皇后部分
+    # 妻子部分
 
     def _create_queentable(self):
         try:
@@ -541,14 +567,14 @@ class DuelCounter:
                            UID           INT    NOT NULL,
                            PRIMARY KEY(GID, CID));''')
         except:
-            raise Exception('创建皇后表发生错误')
+            raise Exception('创建妻子表发生错误')
 
     def _get_queen_owner(self, gid, cid):
         try:
             r = self._connect().execute("SELECT UID FROM QUEENTABLE WHERE GID=? AND CID=?", (gid, cid)).fetchone()
             return 0 if r is None else r[0]
         except:
-            raise Exception('查找皇后归属发生错误')
+            raise Exception('查找妻子归属发生错误')
 
     def _set_queen_owner(self, gid, cid, uid):
         with self._connect() as conn:
@@ -570,15 +596,16 @@ class DuelCounter:
                 f"SELECT CID FROM QUEENTABLE WHERE GID={gid}").fetchall()
             return [c[0] for c in r] if r else {}
 
-    # 查询某人的皇后，无则返回0
+    # 查询某人的妻子，无则返回0
     def _search_queen(self, gid, uid):
         try:
             r = self._connect().execute("SELECT CID FROM QUEENTABLE WHERE GID=? AND UID=?", (gid, uid)).fetchone()
             return 0 if r is None else r[0]
         except:
-            raise Exception('查找皇后发生错误')
+            raise Exception('查找妻子发生错误')
 
-        # 记录决斗和下注数据
+
+# 记录决斗和下注数据
 
 
 class DuelJudger:
@@ -718,6 +745,58 @@ class DuelJudger:
 duel_judger = DuelJudger()
 
 
+class NvYouJiaoYi:
+    def __init__(self):
+        self.jiaoyion = {}
+        self.jiaoyiflag = {}
+        self.jiaoyiid = {}
+        self.jiaoyiname = {}
+        self.jiaoyi_on = {}
+
+    def get_jiaoyi_on_off_status(self, gid):
+        return self.jiaoyion[gid] if self.jiaoyion.get(gid) is not None else False
+
+    # 记录群交易开关
+    def turn_jiaoyion(self, gid):
+        self.jiaoyion[gid] = True
+
+    def turn_jiaoyioff(self, gid):
+        self.jiaoyion[gid] = False
+
+    # 记录群交易是否接受开关
+    def turn_on_jiaoyi(self, gid):
+        self.jiaoyi_on[gid] = True
+
+    def turn_off_jiaoyi(self, gid):
+        self.jiaoyi_on[gid] = False
+
+    # 记录交易者id
+    def init_jiaoyiid(self, gid):
+        self.jiaoyiid[gid] = []
+
+    def set_jiaoyiid(self, gid, id1, id2, cid):
+        self.jiaoyiid[gid] = [id1, id2, cid]
+
+    def get_jiaoyiid(self, gid):
+        return self.jiaoyiid[gid] if self.jiaoyi_on.get(gid) is not None else [0, 0, 0]
+
+    # 记录是否接受交易
+    def init_jiaoyiflag(self, gid):
+        self.jiaoyiflag[gid] = False
+
+    def on_jiaoyiflag(self, gid):
+        self.jiaoyiflag[gid] = True
+
+    def off_jiaoyiflag(self, gid):
+        self.jiaoyiflag[gid] = False
+
+    def get_jiaoyiflag(self, gid):
+        return self.jiaoyiflag[gid] if self.jiaoyiflag[gid] is not None else False
+
+
+duel_jiaoyier = NvYouJiaoYi()
+
+
 # 随机生成一个pcr角色id，应该已经被替代了。
 def get_pcr_id():
     chara_id_list = list(_pcr_data.CHARA_NAME.keys())
@@ -742,13 +821,17 @@ def get_newgirl_list(gid):
 # 取爵位名
 def get_noblename(level: int):
     namedict = {
-        "1": "男爵",
-        "2": "子爵",
-        "3": "伯爵",
-        "4": "侯爵",
-        "5": "公爵",
-        "6": "国王",
-        "7": "皇帝"
+        "1": "平民",
+        "2": "骑士",
+        "3": "准男爵",
+        "4": "男爵",
+        "5": "子爵",
+        "6": "伯爵",
+        "7": "侯爵",
+        "8": "公爵",
+        "9": "国王",
+        "10": "皇帝",
+        "20": "已成神"
     }
     return namedict[str(level)]
 
@@ -762,6 +845,12 @@ def get_girlnum(level: int):
 # 返回升级到爵位所需要的金币数
 def get_noblescore(level: int):
     numdict = LEVEL_COST_DICT
+    return numdict[str(level)]
+
+
+# 返回升级到爵位所需要的声望数
+def get_noblesw(level: int):
+    numdict = LEVEL_SW_NEED
     return numdict[str(level)]
 
 
@@ -793,6 +882,155 @@ def concat_pic(pics, border=0):
     return des
 
 
+@sv.on_rex(f'^用(\d+)金币与(.*)交易女友(.*)$')
+async def nobleduel(bot, ev: CQEvent):
+    if duel_jiaoyier.get_jiaoyi_on_off_status(ev.group_id):
+        await bot.send(ev, "此轮交易还没结束，请勿重复使用指令。")
+        return
+    gid = ev.group_id
+    match = ev['match']
+    try:
+        id2 = int(match.group(2))
+    except ValueError:
+        id2 = int(ev.message[1].data['qq'])
+    except:
+        await bot.finish(ev, '参数格式错误')
+
+    name = str(match.group(3))
+    num = int(match.group(1))
+    duel_jiaoyier.turn_jiaoyion(gid)
+    id1 = ev.user_id
+    duel = DuelCounter()
+    score_counter = ScoreCounter2()
+    level2 = duel._get_level(gid, id2)
+    noblename = get_noblename(level2)
+    is_overtime = 0
+    score = score_counter._get_score(gid, id1)
+    if score < num:
+        msg = f'您的金币不足{num}，无法交易哦。'
+        duel_jiaoyier.turn_jiaoyioff(ev.group_id)
+        await bot.send(ev, msg, at_sender=True)
+        return
+    if id2 == id1:
+        await bot.send(ev, "不能和自己交易！", at_sender=True)
+        duel_jiaoyier.turn_jiaoyioff(ev.group_id)
+        return
+    if girl_outlimit(gid, id1):
+        duel_jiaoyier.turn_jiaoyioff(ev.group_id)
+        await bot.send(ev, "您的女友超过了爵位上限，无法进行交易哦！", at_sender=True)
+        return
+
+    if duel._get_level(gid, id1) == 0:
+        msg = f'[CQ:at,qq={id1}]交易发起者还未在创建过贵族\n请发送 创建贵族 开始您的贵族之旅。'
+        duel_jiaoyier.turn_jiaoyioff(ev.group_id)
+        await bot.send(ev, msg)
+        return
+    if duel._get_cards(gid, id1) == {}:
+        msg = f'[CQ:at,qq={id1}]您没有女友，不能参与交易哦。'
+        duel_jiaoyier.turn_jiaoyioff(ev.group_id)
+        await bot.send(ev, msg)
+        return
+
+    if duel._get_level(gid, id2) == 0:
+        msg = f'[CQ:at,qq={id2}]被交易者还未在本群创建过贵族\n请发送 创建贵族 开始您的贵族之旅。'
+        duel_jiaoyier.turn_jiaoyioff(ev.group_id)
+        await bot.send(ev, msg)
+        return
+    if duel._get_cards(gid, id2) == {}:
+        msg = f'[CQ:at,qq={id2}]您没有女友，不能参与交易哦。'
+        duel_jiaoyier.turn_jiaoyioff(ev.group_id)
+        await bot.send(ev, msg)
+        return
+
+    if not name:
+        await bot.send(ev, '请输入查女友+pcr角色名。', at_sender=True)
+        return
+    cid = chara.name2id(name)
+    if cid == 1000:
+        await bot.send(ev, '请输入正确的pcr角色名。', at_sender=True)
+        return
+    owner = duel._get_card_owner(gid, cid)
+    c = chara.fromid(cid)
+    # 判断是否是妻子。
+    if duel._get_queen_owner(gid, cid) != 0:
+        owner = duel._get_queen_owner(gid, cid)
+        duel_jiaoyier.turn_jiaoyioff(ev.group_id)
+        await bot.finish(ev, f'\n{c.name}现在是\n[CQ:at,qq={owner}]的妻子，无法交易哦。', at_sender=True)
+
+    if owner == 0:
+        await bot.send(ev, f'{c.name}现在还是单身哦，快去约到她吧。', at_sender=True)
+        duel_jiaoyier.turn_jiaoyioff(ev.group_id)
+        return
+    if id2 != owner:
+        msg = f'{c.name}现在正在\n[CQ:at,qq={owner}]的身边哦，您需要与此人进行交易哦。'
+        duel_jiaoyier.turn_jiaoyioff(ev.group_id)
+        await bot.send(ev, msg)
+        return
+    duel_jiaoyier.init_jiaoyiflag(gid)
+    duel_jiaoyier.set_jiaoyiid(gid, id1, id2, cid)
+    duel_jiaoyier.turn_on_jiaoyi(gid)
+    msg = f'[CQ:at,qq={id2}]尊敬的{noblename}您好\n[CQ:at,qq={id1}]试图以{num}金币的价格购买您的女友{c.name}，请在{WAIT_TIME_jy}秒内[接受交易/拒绝交易]，女友交易需要收10%手续费哦。'
+    await bot.send(ev, msg)
+
+    await asyncio.sleep(WAIT_TIME_jy)
+    duel_jiaoyier.turn_off_jiaoyi(gid)
+    if duel_jiaoyier.get_jiaoyiflag(gid) is False:
+        msg = '交易被拒绝。'
+        duel_jiaoyier.turn_jiaoyioff(gid)
+        await bot.send(ev, msg, at_sender=True)
+        return
+
+    duel = DuelCounter()
+    get_num = num * 0.9
+    score_counter._add_score(gid, id2, get_num)
+    score = score_counter._get_score(gid, id2)
+
+    score_counter._reduce_score(gid, id1, num)
+    scoreyou = score_counter._get_score(gid, id1)
+    duel._delete_card(gid, id2, cid)
+    duel._add_card(gid, id1, cid)
+    duel_jiaoyier.turn_jiaoyioff(gid)
+    msg = f'[CQ:at,qq={id1}]以{num}金币的价格购买了[CQ:at,qq={id2}]的女友{c.name}，交易成功\n[CQ:at,qq={id1}]您失去了{num}金币，剩余{scoreyou}金币\n[CQ:at,qq={id2}]扣除10%手续费，您能得到了{get_num}金币，剩余{score}金币'
+    await bot.send(ev, msg)
+
+
+@sv.on_fullmatch('接受交易')
+async def duelaccept(bot, ev: CQEvent):
+    gid = ev.group_id
+    if duel_jiaoyier.get_jiaoyi_on_off_status(gid):
+        if ev.user_id == duel_jiaoyier.get_jiaoyiid(gid)[1]:
+            gid = ev.group_id
+            msg = '交易接受成功，请耐心等待交易开始。'
+            await bot.send(ev, msg, at_sender=True)
+            duel_jiaoyier.turn_off_jiaoyi(gid)
+            duel_jiaoyier.on_jiaoyiflag(gid)
+        else:
+            print('不是被交易者')
+    else:
+        print('现在不在交易期间')
+
+
+@sv.on_fullmatch('重置交易')
+async def init_duel(bot, ev: CQEvent):
+    if not priv.check_priv(ev, priv.ADMIN):
+        await bot.finish(ev, '只有群管理才能使用重置决斗哦。', at_sender=True)
+    duel_jiaoyier.turn_jiaoyioff(gid)
+    msg = '已重置本群交易状态！'
+    await bot.send(ev, msg, at_sender=True)
+
+
+@sv.on_fullmatch('拒绝交易')
+async def duelrefuse(bot, ev: CQEvent):
+    gid = ev.group_id
+    if duel_jiaoyier.get_jiaoyi_on_off_status(gid):
+        if ev.user_id == duel_jiaoyier.get_jiaoyiid(gid)[1]:
+            gid = ev.group_id
+            msg = '您已拒绝女友交易。'
+            await bot.send(ev, msg, at_sender=True)
+            duel_jiaoyier.turn_off_jiaoyi(gid)
+            duel_jiaoyier.off_jiaoyiflag(gid)
+
+
 @sv.on_fullmatch('贵族签到')
 async def noblelogin(bot, ev: CQEvent):
     gid = ev.group_id
@@ -817,17 +1055,17 @@ async def noblelogin(bot, ev: CQEvent):
     for num, r in zip(loginnum_, r_):
         sum_ += r
         if ran < sum_: break
-    Bonus = {'1': [100, Login100],
-             '2': [200, Login200],
-             '3': [300, Login300],
-             '4': [600, Login600]
+    Bonus = {'1': [200, Login100],
+             '2': [500, Login200],
+             '3': [700, Login300],
+             '4': [1000, Login600]
              }
     score1 = Bonus[num][0]
     text1 = random.choice(Bonus[num][1])
 
     # 根据爵位的每日固定收入
     level = duel._get_level(gid, uid)
-    score2 = 50 * level
+    score2 = 100 * level
     scoresum = score1 + score2
     score_counter._add_score(gid, uid, scoresum)
     noblename = get_noblename(level)
@@ -867,7 +1105,7 @@ async def add_noble(bot, ev: CQEvent):
             girlmsg = f'为您分配的初始女友为：{c.name}{c.icon.cqcode}'
         duel._add_card(gid, uid, cid)
         duel._set_level(gid, uid, 1)
-        msg = f'\n创建贵族成功！\n您的初始爵位是男爵\n可以拥有3名女友。\n{girlmsg}'
+        msg = f'\n创建贵族成功！\n您的初始爵位是平民\n可以拥有1名女友。\n{girlmsg}'
         await bot.send(ev, msg, at_sender=True)
 
 
@@ -893,6 +1131,7 @@ async def inquire_noble(bot, ev: CQEvent):
 
     cidlist = duel._get_cards(gid, uid)
     cidnum = len(cidlist)
+    nv_names = ''
     if cidnum == 0:
         msg = f'''
 ╔                          ╗
@@ -908,11 +1147,18 @@ async def inquire_noble(bot, ev: CQEvent):
         await bot.send(ev, msg, at_sender=True)
 
     else:
+        shuzi_flag = 0
         for cid in cidlist:
             # 替换复制人可可萝
             if cid == 9999:
                 cid = 1059
             charalist.append(chara.Chara(cid, 0, 0))
+            c = chara.fromid(cid)
+            shuzi_flag = shuzi_flag + 1
+            nv_names = nv_names + c.name + ' '
+            if shuzi_flag == 6:
+                nv_names = nv_names + '\n'
+                shuzi_flag = 0
 
         # 制图部分，六个一行
         num = copy.deepcopy(cidnum)
@@ -951,10 +1197,11 @@ async def inquire_noble(bot, ev: CQEvent):
   您共可拥有{girlnum}名女友
   您已拥有{cidnum}名女友
   她们是：
+  {nv_names}
     {mes}   
 ╚                          ╝
 '''
-        # 判断有无皇后
+        # 判断有无妻子
         queen = duel._search_queen(gid, uid)
         if queen != 0:
             c = chara.fromid(queen)
@@ -964,10 +1211,11 @@ async def inquire_noble(bot, ev: CQEvent):
   您的爵位为{noblename}
   您的金币为{score}
   {partmsg}
-  您的皇后是{c.name}
+  您的妻子是{c.name}
   您共可拥有{girlnum}名女友
   您已拥有{cidnum}名女友
   她们是：
+  {nv_names}
     {mes}  
     
 ╚                          ╝
@@ -990,7 +1238,6 @@ async def add_girl(bot, ev: CQEvent):
     if duel._get_level(gid, uid) == 0:
         msg = '您还未在本群创建过贵族，请发送 创建贵族 开始您的贵族之旅。'
         duel_judger.turn_off(ev.group_id)
-
         await bot.send(ev, msg, at_sender=True)
         return
     else:
@@ -1029,7 +1276,9 @@ async def add_girl(bot, ev: CQEvent):
         # 招募女友失败
         if random.random() < 0.4:
             losetext = random.choice(Addgirlfail)
-            msg = f'\n{losetext}\n您花费了{GACHA_COST}金币，但是没有约到新的女友。'
+            msg = f'\n{losetext}\n您花费了{GACHA_COST}金币，但是没有约到新的女友。获得了200金币补偿。'
+            score_counter._add_score(gid, uid, 200)
+            score = score_counter._get_score(gid, uid)
             await bot.send(ev, msg, at_sender=True)
             return
 
@@ -1065,13 +1314,18 @@ async def add_girl(bot, ev: CQEvent):
         await bot.send(ev, msg, at_sender=True)
         return
 
-    if level == 6:
+    if level == 9:
         msg = f'您已经是国王了， 需要通过声望加冕称帝哦。'
         await bot.send(ev, msg, at_sender=True)
         return
 
-    if level == 7:
-        msg = f'您是本群的皇帝， 已经无法提升等级了。'
+    if level == 10:
+        msg = f'您是本群的皇帝， 再往前一步就能成神了，请飞升成神。'
+        await bot.send(ev, msg, at_sender=True)
+        return
+
+    if level == 20:
+        msg = f'您已经到达了世界的巅峰， 无法再继续提升了。'
         await bot.send(ev, msg, at_sender=True)
         return
 
@@ -1079,19 +1333,33 @@ async def add_girl(bot, ev: CQEvent):
         msg = f'您的女友没满哦。\n需要达到{girlnum}名女友\n您现在有{cidnum}名。'
         await bot.send(ev, msg, at_sender=True)
         return
+
     needscore = get_noblescore(level + 1)
     futurename = get_noblename(level + 1)
+    needSW = get_noblesw(level + 1)
 
     if score < needscore:
         msg = f'您的金币不足哦。\n升级到{futurename}需要{needscore}金币'
         await bot.send(ev, msg, at_sender=True)
         return
+
+    prestige = score_counter._get_prestige(gid, uid)
+
+    if level > 5:
+        if prestige == None:
+            score_counter._set_prestige(gid, uid, 0)
+            await bot.finish(ev, '您还未开启声望系统哦，已为您开启！', at_sender=True)
+
+        if prestige < needSW:
+            await bot.finish(ev, '您的声望不足哦。', at_sender=True)
+
+        score_counter._reduce_prestige(gid, uid, needSW)
     score_counter._reduce_score(gid, uid, needscore)
     duel._add_level(gid, uid)
     newlevel = duel._get_level(gid, uid)
     newnoblename = get_noblename(newlevel)
     newgirlnum = get_girlnum(newlevel)
-    msg = f'花费了{needscore}金币\n您成功由{noblename}升到了{newnoblename}\n可以拥有{newgirlnum}名女友了哦。'
+    msg = f'花费了{needscore}金币和{needSW}声望\n您成功由{noblename}升到了{newnoblename}\n可以拥有{newgirlnum}名女友了哦。'
     await bot.send(ev, msg, at_sender=True)
 
 
@@ -1176,14 +1444,16 @@ async def nobleduel(bot, ev: CQEvent):
 爵位为：{noblename1}
 2号：[CQ:at,qq={id2}]
 爵位为：{noblename2}
-其他人请在{DUEL_SUPPORT_TIME}秒选择支持的对象。
+其他人请在{DUEL_SUPPORT_TIME}秒选择支持的对象
+[庆典举办中]支持成功时，金币的获取量将会变为三倍！
 [支持1/2号xxx金币]'''
 
     await bot.send(ev, msg)
     duel_judger.turn_on_support(gid)
+    deadnum = int(math.floor(random.uniform(1, 7)))
+    print("死的位置是", deadnum)
     await asyncio.sleep(DUEL_SUPPORT_TIME)
     duel_judger.turn_off_support(gid)
-    deadnum = random.randint(1, 6)
     duel_judger.set_deadnum(gid, deadnum)
     duel_judger.init_turn(gid)
     duel_judger.turn_on_fire(gid)
@@ -1243,13 +1513,13 @@ async def nobleduel(bot, ev: CQEvent):
         msg = f'[CQ:at,qq={loser}]\n您输掉了贵族决斗，被抢走了女友\n{c.name}，\n只要招募，她就还会来到你的身边哦。{c.icon.cqcode}'
         await bot.send(ev, msg)
 
-    # 判断被输掉的是否为皇后。
+    # 判断被输掉的是否为妻子。
     elif selected_girl == queen:
-        score_counter._add_score(gid, winner, 300)
-        msg = f'[CQ:at,qq={winner}]您赢得的角色为对方的皇后，\n您改为获得300金币。'
+        score_counter._add_score(gid, winner, 800)
+        msg = f'[CQ:at,qq={winner}]您赢得的角色为对方的妻子，\n您改为获得800金币。'
         await bot.send(ev, msg)
-        score_counter._reduce_prestige(gid, loser, 500)
-        msg = f'[CQ:at,qq={loser}]您差点输掉了皇后，失去了500声望。'
+        score_counter._reduce_prestige(gid, loser, 100)
+        msg = f'[CQ:at,qq={loser}]您差点输掉了妻子，额外失去了100声望。'
         await bot.send(ev, msg)
 
 
@@ -1276,10 +1546,15 @@ async def nobleduel(bot, ev: CQEvent):
             msg = f'[CQ:at,qq={winner}]\n“主人有了女友已经不再孤单了，我暂时离开了哦。”\n您赢得了{c.name},可可萝微笑着消失了。\n您获得了300金币。'
             await bot.send(ev, msg)
     # 判断胜者败者是否需要增减声望
+    level_loser = duel._get_level(gid, loser)
+    wingold = 800 + (level_loser * 100)
+    score_counter._add_score(gid, winner, wingold)
+    msg = f'[CQ:at,qq={winner}]本次决斗胜利获得了{wingold}金币。'
+    await bot.send(ev, msg)
     winprestige = score_counter._get_prestige(gid, winner)
     if winprestige != None:
-        score_counter._add_prestige(gid, winner, 200)
-        msg = f'[CQ:at,qq={winner}]决斗胜利使您的声望上升了200点。'
+        score_counter._add_prestige(gid, winner, 300)
+        msg = f'[CQ:at,qq={winner}]决斗胜利使您的声望上升了300点。'
         await bot.send(ev, msg)
     loseprestige = score_counter._get_prestige(gid, loser)
     if loseprestige != None:
@@ -1289,7 +1564,7 @@ async def nobleduel(bot, ev: CQEvent):
 
     # 判定败者是否掉爵位，皇帝不会因为决斗掉爵位。
     level_loser = duel._get_level(gid, loser)
-    if level_loser > 1 and level_loser != 7:
+    if level_loser > 1 and level_loser < 8:
         noblename_loser = get_noblename(level_loser)
         girlnum_loser = get_girlnum(level_loser - 1)
         cidlist_loser = duel._get_cards(gid, loser)
@@ -1301,12 +1576,13 @@ async def nobleduel(bot, ev: CQEvent):
             await bot.send(ev, msg)
 
     # 结算下注金币，判定是否为超时局。
-    if is_overtime == 1 and n != 6:
-        msg = '本局为超时局，不进行金币结算，支持的金币全部返还。'
-        await bot.send(ev, msg)
-        duel_judger.set_support(ev.group_id)
-        duel_judger.turn_off(ev.group_id)
-        return
+    if is_overtime == 1:
+        if n != 6:
+            msg = '本局为超时局，不进行金币结算，支持的金币全部返还。'
+            await bot.send(ev, msg)
+            duel_judger.set_support(ev.group_id)
+            duel_judger.turn_off(ev.group_id)
+            return
 
     support = duel_judger.get_support(gid)
     winuid = []
@@ -1448,13 +1724,18 @@ async def get_score(bot, ev: CQEvent):
         await bot.send(ev, '错误:\n' + str(e))
 
 
-@sv.on_rex(f'^为(\d+)充值(\d+)金币$')
+@sv.on_rex(f'^为(.*)充值(\d+)金币$')
 async def cheat_score(bot, ev: CQEvent):
     if not priv.check_priv(ev, priv.SUPERUSER):
         await bot.finish(ev, '不要想着走捷径哦。', at_sender=True)
     gid = ev.group_id
     match = ev['match']
-    id = int(match.group(1))
+    try:
+        id = int(match.group(1))
+    except ValueError:
+        id = int(ev.message[1].data['qq'])
+    except:
+        await bot.finish(ev, '参数格式错误')
     num = int(match.group(2))
     duel = DuelCounter()
     score_counter = ScoreCounter2()
@@ -1464,6 +1745,36 @@ async def cheat_score(bot, ev: CQEvent):
     score = score_counter._get_score(gid, id)
     msg = f'已为[CQ:at,qq={id}]充值{num}金币。\n现在共有{score}金币。'
     await bot.send(ev, msg)
+
+
+@sv.on_rex(f'^为(.*)转账(\d+)金币$')
+async def cheat_score(bot, ev: CQEvent):
+    gid = ev.group_id
+    uid = ev.user_id
+    match = ev['match']
+    try:
+        id = int(match.group(1))
+    except ValueError:
+        id = int(ev.message[1].data['qq'])
+    except:
+        await bot.finish(ev, '参数格式错误')
+    num = int(match.group(2))
+    duel = DuelCounter()
+    score_counter = ScoreCounter2()
+    if duel._get_level(gid, id) == 0:
+        await bot.finish(ev, '该用户还未在本群创建贵族哦。', at_sender=True)
+    score = score_counter._get_score(gid, uid)
+    if score < num:
+        msg = f'您的金币不足{num}哦。'
+        await bot.send(ev, msg, at_sender=True)
+        return
+    else:
+        score_counter._add_score(gid, id, num)
+        score = score_counter._get_score(gid, id)
+        score_counter._reduce_score(gid, uid, num)
+        scoreyou = score_counter._get_score(gid, uid)
+        msg = f'已为[CQ:at,qq={id}]转账{num}金币。\n您的金币剩余{scoreyou}金币，对方金币剩余{score}金币。'
+        await bot.send(ev, msg)
 
 
 @sv.on_fullmatch('重置决斗')
@@ -1490,11 +1801,11 @@ async def search_girl(bot, ev: CQEvent):
     duel = DuelCounter()
     owner = duel._get_card_owner(gid, cid)
     c = chara.fromid(cid)
-    # 判断是否是皇后。
+    # 判断是否是妻子。
     print(duel._get_queen_owner(gid, cid))
     if duel._get_queen_owner(gid, cid) != 0:
         owner = duel._get_queen_owner(gid, cid)
-        await bot.finish(ev, f'\n{c.name}现在是\n[CQ:at,qq={owner}]的皇后哦。{c.icon.cqcode}', at_sender=True)
+        await bot.finish(ev, f'\n{c.name}现在是\n[CQ:at,qq={owner}]的妻子哦。{c.icon.cqcode}', at_sender=True)
 
     if owner == 0:
         await bot.send(ev, f'{c.name}现在还是单身哦，快去约到她吧。', at_sender=True)
@@ -1576,10 +1887,10 @@ async def breakup(bot, ev: CQEvent):
         cidlist = duel._get_cards(gid, uid)
         if cid not in cidlist:
             await bot.finish(ev, '该角色不在你的身边哦。', at_sender=True)
-        # 检测是否是皇后
+        # 检测是否是妻子
         queen = duel._search_queen(gid, uid)
         if cid == queen:
-            await bot.finish(ev, '不可以和您的皇后分手哦。', at_sender=True)
+            await bot.finish(ev, '不可以和您的妻子分手哦。', at_sender=True)
         if score < needscore:
             msg = f'您的爵位分手一位女友需要{needscore}金币哦。\n分手不易，做好准备再来吧。'
             await bot.finish(ev, msg, at_sender=True)
@@ -1602,29 +1913,29 @@ async def open_prestige(bot, ev: CQEvent):
     prestige = score_counter._get_prestige(gid, uid)
     if prestige != None:
         await bot.finish(ev, '您已经开启了声望系统哦。', at_sender=True)
-    if level != 6:
-        await bot.finish(ev, '只有国王才可以开启声望系统哦。', at_sender=True)
+    if level <= 5:
+        await bot.finish(ev, '等级不足，需要伯爵及以上可以开启声望系统哦。', at_sender=True)
     score_counter._set_prestige(gid, uid, 0)
-    msg = '成功开启声望系统！国王殿下，向着成为皇帝的目标进发吧。'
+    msg = '成功开启声望系统！殿下，向着成为皇帝的目标进发吧。'
     await bot.send(ev, msg, at_sender=True)
 
 
 @sv.on_fullmatch('声望系统帮助')
 async def prestige_help(bot, ev: CQEvent):
     msg = '''
-成为国王后才可以开启声望系统
+成为伯爵后才可以开启声望系统
 开启后可以通过决斗等方式获取声望
 声望系统相关指令如下
 1. 开启声望系统
 2. 查询声望
-3. 加冕仪式(需要10000声望，5000金币）
-4. 皇室婚礼+角色名(需3000声望，3000金币)
+3. 加冕仪式(需要4000声望，20000金币）
+4. 皇室婚礼+角色名(需5000金币，公爵以上)
 
-决斗胜利+200声望
+决斗胜利+300声望
 决斗失败-100声望
-皇室婚礼需皇帝才能举办
-每位皇帝只能举办一次
-皇后不会因决斗被抢走
+皇室婚礼需公爵才能举办
+每个人只能举办一次
+妻子不会因决斗被抢走
 
  '''
     await bot.send(ev, msg)
@@ -1655,18 +1966,42 @@ async def be_emperor(bot, ev: CQEvent):
 
     if prestige == None:
         await bot.finish(ev, '您还未开启声望系统哦。', at_sender=True)
-    if level != 6:
+    if level != 9:
         await bot.finish(ev, '只有国王才能进行加冕仪式哦。', at_sender=True)
 
-    if prestige < 10000:
-        await bot.finish(ev, '加冕仪式需要10000声望，您的声望不足哦。', at_sender=True)
+    if prestige < 4000:
+        await bot.finish(ev, '加冕仪式需要4000声望，您的声望不足哦。', at_sender=True)
     score = score_counter._get_score(gid, uid)
-    if score < 5000:
-        await bot.finish(ev, '加冕仪式需要5000金币，您的金币不足哦。', at_sender=True)
-    score_counter._reduce_score(gid, uid, 5000)
+    if score < 20000:
+        await bot.finish(ev, '加冕仪式需要20000金币，您的金币不足哦。', at_sender=True)
+    score_counter._reduce_score(gid, uid, 20000)
+    score_counter._reduce_prestige(gid, uid, 4000)
+    duel._set_level(gid, uid, 10)
+    msg = '\n礼炮鸣响，教皇领唱“感恩赞美歌”。“皇帝万岁！”\n在民众的欢呼声中，你加冕为了皇帝。\n花费了4000点声望，20000金币。'
+    await bot.send(ev, msg, at_sender=True)
+
+
+@sv.on_fullmatch(['飞升成神', '成神飞升'])
+async def be_feisheng(bot, ev: CQEvent):
+    gid = ev.group_id
+    uid = ev.user_id
+    duel = DuelCounter()
+    level = duel._get_level(gid, uid)
+    score_counter = ScoreCounter2()
+    prestige = score_counter._get_prestige(gid, uid)
+
+    if level != 10:
+        await bot.finish(ev, '只有皇帝才能飞升哦。', at_sender=True)
+
+    if prestige < 10000:
+        await bot.finish(ev, '飞升成神需要10000声望，您的声望不足哦。', at_sender=True)
+    score = score_counter._get_score(gid, uid)
+    if score < 30000:
+        await bot.finish(ev, '飞升成神需要30000金币，您的金币不足哦。', at_sender=True)
+    score_counter._reduce_score(gid, uid, 30000)
     score_counter._reduce_prestige(gid, uid, 10000)
-    duel._set_level(gid, uid, 7)
-    msg = '\n礼炮鸣响，教皇领唱“感恩赞美歌”。“皇帝万岁！”\n在民众的欢呼声中，你加冕为了皇帝。\n花费了10000点声望，5000金币。'
+    duel._set_level(gid, uid, 20)
+    msg = '\n光柱冲天，你感觉无尽的力量涌入了自己的体内。\n在民众的惊讶的目光中，你飞升成神了。\n花费了10000点声望，30000金币。'
     await bot.send(ev, msg, at_sender=True)
 
 
@@ -1681,8 +2016,8 @@ async def marry_queen(bot, ev: CQEvent):
     prestige = score_counter._get_prestige(gid, uid)
     if prestige == None:
         await bot.finish(ev, '您还未开启声望系统哦。', at_sender=True)
-    if level != 7:
-        await bot.finish(ev, '只有皇帝才可以举办皇室婚礼哦。', at_sender=True)
+    if level <= 7:
+        await bot.finish(ev, '只有8级(公爵)及以上才可以举办皇室婚礼哦。', at_sender=True)
     if duel._search_queen(gid, uid) != 0:
         await bot.finish(ev, '皇帝只可以举办一次皇室婚礼哦。', at_sender=True)
     if not args:
@@ -1694,14 +2029,89 @@ async def marry_queen(bot, ev: CQEvent):
     cidlist = duel._get_cards(gid, uid)
     if cid not in cidlist:
         await bot.finish(ev, '该角色不在你的身边哦。', at_sender=True)
-    if prestige < 3000:
-        await bot.finish(ev, '皇室婚礼需要3000声望，您的声望不足哦。', at_sender=True)
     score = score_counter._get_score(gid, uid)
     if score < 3000:
         await bot.finish(ev, '皇室婚礼需要3000金币，您的金币不足哦。', at_sender=True)
-    score_counter._reduce_prestige(gid, uid, 3000)
     score_counter._reduce_score(gid, uid, 3000)
     duel._set_queen_owner(gid, cid, uid)
     c = chara.fromid(cid)
-    msg = f'繁杂的皇室礼仪过后\n\n{c.name}与[CQ:at,qq={uid}]\n\n正式踏上了婚礼的殿堂\n成为了他的皇后。\n让我们为他们表示祝贺！\n皇后不会因决斗被抢走了哦。\n{c.icon.cqcode}'
+    msg = f'繁杂的皇室礼仪过后\n\n{c.name}与[CQ:at,qq={uid}]\n\n正式踏上了婚礼的殿堂\n成为了他的妻子。\n让我们为他们表示祝贺！\n妻子不会因决斗被抢走了哦。\n{c.icon.cqcode}'
     await bot.send(ev, msg)
+
+
+@sv.on_prefix('确认离婚')
+async def lihun_queen(bot, ev: CQEvent):
+    gid = ev.group_id
+    uid = ev.user_id
+    duel = DuelCounter()
+    level = duel._get_level(gid, uid)
+    score_counter = ScoreCounter2()
+    prestige = score_counter._get_prestige(gid, uid)
+    if duel._search_queen(gid, uid) == 0:
+        await bot.finish(ev, '您没有妻子！。', at_sender=True)
+    score = score_counter._get_score(gid, uid)
+    if prestige < 3000:
+        await bot.finish(ev, '离婚需要3000声望，您的声望现在离婚可能身败名裂哦。', at_sender=True)
+    if score < 20000:
+        await bot.finish(ev, '离婚需要20000金币，您的金币不足哦。', at_sender=True)
+    score_counter._reduce_score(gid, uid, 20000)
+    score_counter._reduce_prestige(gid, uid, 3000)
+    queen = duel._search_queen(gid, uid)
+    duel._delete_card(gid, uid, queen)
+    c = chara.fromid(queen)
+    msg = f'花费了20000金币，[CQ:at,qq={uid}]总算将他的妻子{c.name}赶出家门\n，引起了众人的不满，损失3000声望。{c.icon.cqcode}'
+    duel._delete_queen_owner(gid, queen)
+    await bot.send(ev, msg)
+
+
+@sv.on_rex(f'^为(.*)充值(\d+)声望$')
+async def cheat_SW(bot, ev: CQEvent):
+    if not priv.check_priv(ev, priv.SUPERUSER):
+        await bot.finish(ev, '不要想着走捷径哦。', at_sender=True)
+    gid = ev.group_id
+    match = ev['match']
+    try:
+        id = int(match.group(1))
+    except ValueError:
+        id = int(ev.message[1].data['qq'])
+    except:
+        await bot.finish(ev, '参数格式错误')
+    num = int(match.group(2))
+    duel = DuelCounter()
+    score_counter = ScoreCounter2()
+    prestige = score_counter._get_prestige(gid, id)
+    if duel._get_level(gid, id) == 0:
+        await bot.finish(ev, '该用户还未在本群创建贵族哦。', at_sender=True)
+    if prestige == None:
+        await bot.finish(ev, '该用户尚未开启声望系统哦！。', at_sender=True)
+    score_counter._add_prestige(gid, id, num)
+    msg = f'已为[CQ:at,qq={id}]充值{num}声望。'
+    await bot.send(ev, msg)
+
+
+@sv.on_rex(f'^兑换(\d+)声望$')
+async def cheat_score(bot, ev: CQEvent):
+    gid = ev.group_id
+    uid = ev.user_id
+    match = ev['match']
+    num = int(match.group(1))
+    duel = DuelCounter()
+    score_counter = ScoreCounter2()
+    prestige = score_counter._get_prestige(gid, uid)
+    if duel._get_level(gid, uid) == 0:
+        await bot.finish(ev, '您还没有在本群创建贵族哦。', at_sender=True)
+    if prestige == None:
+        await bot.finish(ev, '您未开启声望系统哦！。', at_sender=True)
+    score = score_counter._get_score(gid, uid)
+    pay_score = num * 10000
+    if score < pay_score:
+        msg = f'兑换{num}声望需要{pay_score}金币，您的金币只有{score}，无法兑换哦。'
+        await bot.send(ev, msg, at_sender=True)
+        return
+    else:
+        score_counter._reduce_score(gid, uid, pay_score)
+        score_counter._add_prestige(gid, uid, num)
+        scoreyou = score_counter._get_score(gid, uid)
+        prestige = score_counter._get_prestige(gid, uid)
+        msg = f'兑换{num}声望成功，扣除{pay_score}金币\n您的声望为{prestige}，金币剩余{scoreyou}。'
+        await bot.send(ev, msg, at_sender=True)
