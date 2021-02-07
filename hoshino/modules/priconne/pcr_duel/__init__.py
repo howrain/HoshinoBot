@@ -28,7 +28,7 @@ DUEL_DAILY_LIMIT = 999  # 每个人每日发起决斗上限
 RESET_HOUR = 0  # 每日使用次数的重置时间，0代表凌晨0点，1代表凌晨1点，以此类推
 GACHA_COST = 500  # 抽老婆需求
 ZERO_GET_AMOUNT = 150  # 没钱补给量
-WIN_NUM = 1  # 下注获胜赢得的倍率
+WIN_NUM = 3  # 下注获胜赢得的倍率
 BREAK_UP_SWITCH = True  # 分手系统开关
 LEVEL_GIRL_NEED = {
     "1": 1,
