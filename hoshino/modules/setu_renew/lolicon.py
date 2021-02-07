@@ -118,8 +118,8 @@ async def download_image(url: str):
                 imgByteArr = io.BytesIO()
                 roiImg.save(imgByteArr, format='JPEG')
                 return imgByteArr.getvalue()
-    except :
-        print('[ERROR]download image failed')
+    except Exception as e:
+        print('[ERROR]download image failed.',e)
         #traceback.print_exc()
     return None
 
