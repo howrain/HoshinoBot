@@ -1,35 +1,103 @@
 import hoshino
 import asyncio
-import random
-from datetime import datetime
+import json
+import traceback
 import os
-from os import path
-import pytz
-from .base import *
-from nonebot import scheduler, MessageSegment
-from .config import get_config, get_group_config, get_group_info, load_config, set_group_config,group_list_check, set_group_list
+from nonebot import scheduler
 
 HELP_MSG = '''
 来 [num] 张 [keyword] 涩/色/瑟图 : 来num张keyword的涩图(不指定数量与关键字发送一张随机涩图)
 涩/色/瑟图 : 发送一张随机涩图
+提取图片pid ： 获取指定id的p站图片，没有时发送链接
 本日涩图排行榜 [page] : 获取[第page页]p站排行榜(需开启acggov模块)
 看涩图 [n] 或 [start end] : 获取p站排行榜[第n名/从start名到end名]色图(需开启acggov模块)
 '''
 sv = hoshino.Service('setu', bundle='pcr娱乐', help_=HELP_MSG)
 
-tz = pytz.timezone('Asia/Shanghai')
+config_default = {
+    "base": {
+        "daily_max": 20, #每日上限次数
+        "freq_limit": 300, #频率限制
+        "whitelistmode": False, #白名单模式开关
+        "blacklistmode": False, #黑名单模式开关
+        "ban_if_group_num_over": 3000, #字面意思
+        "max_pic_once_send": 1 #一次最大发送图片数量
+    },
+    "default": {
+        "withdraw" : 45, #撤回时间，单位秒
+        "lolicon": True, #lolicon模块开关
+        "lolicon_r18": False, #lolicon_r18模块开关
+        "acggov": False #acggov模块开关
+    },
+    "lolicon": {
+        "mode": 2, #0禁用 1无缓存 2有缓存在线 3有缓存离线
+        "apikey": [""], #lolicon API，可多个
+        "r18": False, #R18图开关
+        "use_thumb": True, #选取小图开关
+        "pixiv_direct": False, #是否直连pixiv
+        "pixiv_proxy": "https://i.pixiv.cat", #pixiv代理地址
+        "lolicon_proxy": "" #lolicon代理地址
+    },
+    "acggov": {
+        "mode": 2, #0禁用 1无缓存 2有缓存在线 3有缓存离线
+        "apikey": "", #acggov API
+        "ranking_mode": "daily", #排行榜模式
+        "per_page": 25, #一米哇甘耐
+        "use_thumb": True, #选取小图开关
+        "pixiv_direct": False, #是否直连pixiv
+        "pixiv_proxy": "https://i.pixiv.cat", #pixiv代理地址
+        "acggov_proxy": "" #acggov代理地址
+    }
+}
+group_list_default ={
+    "white_list":[
 
-# 美食time判断区间
-START = 22
-END = 3
+    ],
+    "black_list":[
 
-# 设置limiter 
+    ]
+}
+groupconfig_default = {}
+
+#Check config if exist
+pathcfg = os.path.join(os.path.dirname(__file__), 'config.json')
+if not os.path.exists(pathcfg):
+    try:
+        with open(pathcfg, 'w') as cfgf:
+            json.dump(config_default, cfgf, ensure_ascii=False, indent=2)
+            print('[WARNING]未找到配置文件，已根据默认配置模板创建，请打开插件目录内config.json查看和修改。')
+    except:
+        print('[ERROR]创建配置文件失败，请检查插件目录的读写权限及是否存在config.json。')
+        traceback.print_exc()
+
+#check group list if exist
+glpath = os.path.join(os.path.dirname(__file__), 'grouplist.json')
+if not os.path.exists(glpath):
+    try:
+        with open(glpath, 'w') as cfggl:
+            json.dump(group_list_default, cfggl, ensure_ascii=False, indent=2)
+            print('[WARNING]未找到黑白名单文件，已根据默认黑白名单模板创建。')
+    except:
+        print('[ERROR]创建黑白名单文件失败，请检查插件目录的读写权限。')
+        traceback.print_exc()
+
+#check group config if exist
+gpcfgpath = os.path.join(os.path.dirname(__file__), 'groupconfig.json')
+if not os.path.exists(gpcfgpath):
+    try:
+        with open(gpcfgpath, 'w') as gpcfg:
+            json.dump(groupconfig_default, gpcfg, ensure_ascii=False, indent=2)
+            print('[WARNING]未找到群个体设置文件，已创建。')
+    except:
+        print('[ERROR]创建群个体设置文件失败，请检查插件目录的读写权限。')
+        traceback.print_exc()
+
+from .base import *
+from .config import get_config, get_group_config, get_group_info, set_group_config,group_list_check, set_group_list
+
+#设置limiter 
 tlmt = hoshino.util.DailyNumberLimiter(get_config('base', 'daily_max'))
 flmt = hoshino.util.FreqLimiter(get_config('base', 'freq_limit'))
-
-res_path = path.abspath(path.join(path.expanduser(hoshino.config.RES_DIR),'food'))
-if not path.exists(res_path):
-	os.makedirs(res_path)
 
 def check_lmt(uid, num, gid):
     if uid in hoshino.config.SUPERUSERS:
@@ -42,7 +110,7 @@ def check_lmt(uid, num, gid):
     if not tlmt.check(uid):
         return 1, f"您今天已经冲过{get_config('base', 'daily_max')}次了,请明天再来~"
     if num > 1 and (get_config('base', 'daily_max') - tlmt.get_num(uid)) < num:
-            return 1, f"您今天的剩余次数为{get_config('base', 'daily_max') - tlmt.get_num(uid)}次,已不足{num}次,请冲少点(恼)!"
+            return 1, f"您今天的剩余次数为{get_config('base', 'daily_max') - tlmt.get_num(uid)}次,已不足{num}次,请少冲点(恼)!"
     if not flmt.check(uid):
         return 1, f'您冲的太快了,{round(flmt.left_time(uid))}秒后再来吧~'
     #tlmt.increase(uid,num)
@@ -138,7 +206,8 @@ async def send_setu(bot, ev):
         msg = '无效参数'
     await bot.send(ev, msg)
 
-@sv.on_rex(r'^[色涩瑟][图圖]|[来來发發给給](?P<num>.?)[张張个個幅点點份丶](?P<keyword>.*?)[色涩瑟][图圖]')
+
+@sv.on_rex(r'^[色涩瑟][图圖]|[来來发發给給]((?P<num>\d+)|(?:.*))[张張个個幅点點份丶](?P<keyword>.*?)[色涩瑟][图圖]')
 async def send_search_setu(bot, ev):
     uid = ev['user_id']
     gid = ev['group_id']
@@ -148,10 +217,10 @@ async def send_search_setu(bot, ev):
             num = int(num)
             max_num = int(get_config('base', 'max_pic_once_send'))
             if num > max_num:
-                await bot.send(ev, f'太贪心了,一次只能要{max_num}份涩图哦~')
+                await bot.send(ev, f'太贪心辣,一次只能要{max_num}份涩图哦~')
                 num = max_num
             else:
-                num = int(num.strip())
+                pass
         except:
             num = 1
     else:
@@ -160,21 +229,26 @@ async def send_search_setu(bot, ev):
     if result != 0:
         await bot.send(ev, msg)
         return
-    global res_path
-    now_hour = datetime.now(tz).hour
-    if (now_hour<=END or now_hour>=START) and random.random() < 0.33:
-        res_list = os.listdir(res_path)
-        if len(res_list)==0:
-            await bot.finish(ev, '看什么看，快去睡觉！', at_sender=True)
-        else: 
-            pic = random.choice(res_list)
-            pic_path = path.join(res_path,pic)
-            await bot.send(ev, MessageSegment.image(f'file:///{pic_path}'))
-            return
-    else:            
-        keyword = ev['match'].group('keyword')
-        result_list = []
-        if not keyword:
+    keyword = ev['match'].group('keyword')
+    result_list = []
+    if not keyword:
+        for _ in range(num):
+            msg = await get_setu(gid)
+            if msg == None:
+                await bot.send(ev, '无可用setu模块')
+                return
+            try:
+                result_list.append(await bot.send(ev, msg))
+            except:
+                print('[ERROR]图片发送失败')
+                await bot.send(ev,f'涩图太涩,发不出去力...')
+            await asyncio.sleep(1)
+    else:
+        keyword = keyword.strip()
+        await bot.send(ev, '搜索中...')
+        msg_list = await search_setu(gid, keyword, num)
+        if len(msg_list) == 0:
+            await bot.send(ev, '没~找~到~哦,随机赠送你一份setu吧~\n可能原因:1.没有使用标准或正式角色名称\n2.兄啊，你的XP怎么这么怪啊.jpg\n3.网络不佳/搜索额度超限')
             for _ in range(num):
                 msg = await get_setu(gid)
                 if msg == None:
@@ -184,43 +258,26 @@ async def send_search_setu(bot, ev):
                     result_list.append(await bot.send(ev, msg))
                 except:
                     print('[ERROR]图片发送失败')
-                    await bot.send(ev,f'涩图太涩,发不出去惹...')
+                    await bot.send(ev, f'涩图太涩,发不出去力...')
                 await asyncio.sleep(1)
         else:
-            keyword = keyword.strip()
-            await bot.send(ev, '搜索中...')
-            msg_list = await search_setu(gid, keyword, num)
-            if len(msg_list) == 0:
-                await bot.send(ev, '没~找~到~哦,随机赠送你一份setu吧~\n可能原因:1.没有使用标准或正式角色名称\n2.兄啊，你的XP怎么这么怪啊.jpg\n3.网络不佳/搜索额度超限')
-                for _ in range(num):
-                    msg = await get_setu(gid)
-                    if msg == None:
-                        await bot.send(ev, '无可用setu模块')
-                        return
-                    try:
-                        result_list.append(await bot.send(ev, msg))
-                    except:
-                        print('[ERROR]图片发送失败')
-                        await bot.send(ev, f'涩图太涩,发不出去惹...')
-                    await asyncio.sleep(1)
-            else:
-                for msg in msg_list:
-                    try:
-                        result_list.append(await bot.send(ev, msg))
-                    except:
-                        print('[ERROR]图片发送失败')
-                        await bot.send(ev, f'涩图太涩,发不出去惹...')
-                    await asyncio.sleep(1)
-        tlmt.increase(uid, len(result_list))
-        second = get_group_config(gid, "withdraw")
-        if second and second > 0:
-            await asyncio.sleep(second)
-            for result in result_list:
+            for msg in msg_list:
                 try:
-                    await bot.delete_msg(self_id=ev['self_id'], message_id=result['message_id'])
+                    result_list.append(await bot.send(ev, msg))
                 except:
-                    print('[ERROR]撤回失败')
+                    print('[ERROR]图片发送失败')
+                    await bot.send(ev, f'涩图太涩,发不出去力...')
                 await asyncio.sleep(1)
+    tlmt.increase(uid, len(result_list))
+    second = get_group_config(gid, "withdraw")
+    if second and second > 0:
+        await asyncio.sleep(second)
+        for result in result_list:
+            try:
+                await bot.delete_msg(self_id=ev['self_id'], message_id=result['message_id'])
+            except:
+                print('[ERROR]撤回失败')
+            await asyncio.sleep(1)
             
 @sv.on_rex(r'^[本每]日[涩色瑟]图排行榜\D*(\d*)')
 async def send_ranking(bot, ev):
@@ -267,7 +324,7 @@ async def send_ranking_setu(bot, ev):
             result_list.append(await bot.send(ev, msg))
         except:
             print('[ERROR]图片发送失败')
-            await bot.send(ev, f'涩图太涩,发不出去惹...')
+            await bot.send(ev, f'涩图太涩,发不出去力...')
         await asyncio.sleep(1)
     tlmt.increase(uid, len(result_list))
     second = get_group_config(gid, "withdraw")
@@ -281,9 +338,7 @@ async def send_ranking_setu(bot, ev):
             await asyncio.sleep(1)
 
 @sv.on_prefix('提取图片')
-async def get_spec_setu(bot,ev):
-    uid = ev['user_id']
-    gid = ev['group_id']
+async def get_spec_setu(bot, ev):
     args = ev.message.extract_plain_text().split()
     try:
         args = args[0]
@@ -292,16 +347,13 @@ async def get_spec_setu(bot,ev):
         return
     args = str(args)
     if len(args) == 8:
-        if type(get_spec_image(args)) == tuple:
-            msg,msg2 = get_spec_image(args)
-            await bot.send(ev,msg2)
-            await bot.send(ev,msg)
+        msg = get_spec_image(args)
+        if not msg:
+            await bot.send(ev, f'没有在本地找到这张图片/不支持r18图片的提取\n原图地址:https://pixiv.lancercmd.cc/{args}')
         else:
-            msg = get_spec_image(args)
-            await bot.send(ev, msg)
+            await bot.send(ev,msg)
     else:
         await bot.send(ev, 'p站id无效,应为8位数字id哦~')
-        return
 
 @sv.scheduled_job('interval', minutes=10)
 async def fetch_setu_process():
@@ -320,4 +372,3 @@ async def set_ban_list():
         else:
             pass
     set_group_list(ban_list,1,0)
-    

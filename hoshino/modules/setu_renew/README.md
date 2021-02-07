@@ -20,6 +20,8 @@
 - [x] 中文化管理指令
 - [x] 增加配置文件热重载的指令
 - [ ] 成员黑名单
+- [ ] 自动反和谐
+- [ ] 使用转发消息的形式发送（规避检测，降低被举报的风险）
 
 ## 注意事项
 
@@ -29,7 +31,7 @@
 
 ## 安装方法
 
-1. 在HoshinoBot的插件目录modules下clone本项目 `git clone https://github.com/corvo007/setu_mix.git`
+1. 在HoshinoBot的插件目录modules下clone本项目 `git clone https://github.com/corvo007/setu_renew.git`
 1. 将本插件目录下的配置文件模板 `config.template.json` 复制并重命名为 `config.json` , 修改该配置文件设置自己的apikey和其他选项, 除apikey以外都可保持默认值.
 1. 在 `config/__bot__.py`的模块列表里加入 `setu_renew`
 1. 重启HoshinoBot
@@ -80,7 +82,7 @@
 
 ## 已知问题
 
-使用纯在线模式时，采用的是base64方式发送，而此方法无法发送过大的图片，故有较大概率无法发送
+- 使用纯在线模式时，采用的是base64方式发送，而此方法无法发送过大的图片，故有较大概率无法发送
 
 ## 开源协议
 
