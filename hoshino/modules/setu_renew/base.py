@@ -1,3 +1,4 @@
+import base64
 import os
 import json
 import traceback
@@ -33,7 +34,9 @@ def get_spec_image(id):
 def format_setu_msg(image):
     try:
         if image["title"]:
-            msg = f'「{image["title"]}」/「{image["author"]}」\nPID:{image["id"]}[CQ:image,file=file:///{os.path.abspath(image["data"])}]'
+            with open(os.path.abspath(image["data"]),'rb') as f:
+                base64_str = f'base64://{base64.b64encode(f.read()).decode()}'
+            msg = f'「{image["title"]}」/「{image["author"]}」\nPID:{image["id"]}[CQ:image,file={base64_str}]'
             return msg
         else:
             return None
