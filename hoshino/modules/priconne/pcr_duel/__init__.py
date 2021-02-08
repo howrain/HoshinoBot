@@ -22,6 +22,7 @@ BLACKLIST_ID = [1000, 1072, 1908, 4031, 9000, 1069, 1073, 1701, 1702, 1067, 1907
                 1917, 1918, 1919, 1920, 9601, 9602, 9603, 9604]  # 黑名单ID
 WAIT_TIME = 30  # 对战接受等待时间
 DUEL_SUPPORT_TIME = 30  # 赌钱等待时间
+WAIT_TIME_jy = 30  # 赌钱等待时间
 DB_PATH = os.path.expanduser("~/.hoshino/pcr_duel.db")
 SIGN_DAILY_LIMIT = 1  # 机器人每天签到的次数
 DUEL_DAILY_LIMIT = 999  # 每个人每日发起决斗上限
