@@ -1015,7 +1015,7 @@ async def duelaccept(bot, ev: CQEvent):
 async def init_duel(bot, ev: CQEvent):
     if not priv.check_priv(ev, priv.ADMIN):
         await bot.finish(ev, '只有群管理才能使用重置决斗哦。', at_sender=True)
-    duel_jiaoyier.turn_jiaoyioff(gid)
+    duel_jiaoyier.turn_jiaoyioff(ev.group_id)
     msg = '已重置本群交易状态！'
     await bot.send(ev, msg, at_sender=True)
 
