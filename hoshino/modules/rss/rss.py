@@ -6,6 +6,9 @@ from PIL import Image
 from io import BytesIO
 import math
 import base64
+
+from sqlitedict import SqliteDict
+
 import hoshino
 import traceback
 import os
@@ -36,6 +39,16 @@ rss mode 0/1 : 设置消息模式 标准/简略
 '''
 
 sv = hoshino.Service('rss', bundle='pcr订阅', help_=HELP_MSG)
+
+
+def get_path(*paths):
+    return os.path.join(os.path.dirname(__file__), *paths)
+
+def init_db(db_dir, db_name='db.sqlite'):
+    return SqliteDict(get_path(db_dir, db_name),
+                      encode=json.dumps,
+                      decode=json.loads,
+                      autocommit=True)
 
 
 def save_data():
@@ -77,6 +90,7 @@ def load_data():
 
 
 load_data()
+db=init_db("./data/")
 
 default_rss = [
     data['rsshub'] + '/bilibili/user/dynamic/353840826',  # pcr官方号
@@ -249,10 +263,11 @@ async def get_rss_news(rss_url):
         last_addr = data['last_addr'][rss_url]
     isnew = False
     new_last_addr = []
+    news_dict = db.get(rss_url, {})
     for item in feed["entries"]:
         published_time = get_published_time(item)
         # 新增加判断 如果链接有发送过，就不再发送了
-        if published_time > last_time and item['id'] not in last_addr:
+        if published_time > last_time and item['id'] not in news_dict.keys():
             isnew = True
             published_time_f = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(published_time))
             last_time_f = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_time))
@@ -273,6 +288,10 @@ async def get_rss_news(rss_url):
                 'time': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(get_published_time(item) + 28800)),
                 # 需要加上8小时的秒数
             }
+            #数据库字典
+            # 2021年2月19日 使用了sqlitedict保存已发送的信息，用于判断id是否已经发送过了
+            news_dict[item['id']]=news
+
             news_list.append(news)
             # 将最后一次获取到的所有链接添加进数组
             new_last_addr.append(item['id'])
@@ -313,11 +332,11 @@ def format_msg(news):
     #         msg += f'[CQ:image,file={base64_str}]'
     if news['images_addr']:
         for image in news['images_addr']:
-            msg += f'[CQ:image,url={image}]'
+            msg += f'[CQ:image,file={image}]'
     if news['video_posters_addr']:
         msg += '\n视频封面:'
         for video_poster in news['video_posters_addr']:
-            msg += f'[CQ:image,url={video_poster}]'
+            msg += f'[CQ:image,file={video_poster}]'
     msg += f"\n原链接：{news['id']}\n日期：{news['time']}"
     return msg
 
