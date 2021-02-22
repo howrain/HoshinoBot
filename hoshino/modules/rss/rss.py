@@ -19,11 +19,11 @@ from html.parser import HTMLParser
 rss_news = {}
 
 data = {
-    'rsshub': 'https://rsshub.bluefissure.com/',
+    'rsshub': 'http://47.95.207.53:1200',
     'proxy': '',
     'proxy_urls': [],
     'last_time': {},
-    'last_addr': {},
+    # 'last_addr': {},
     'group_rss': {},
     'group_mode': {},
 }
@@ -74,8 +74,8 @@ def load_data():
                 data['rsshub'] = d['rsshub']
             if 'last_time' in d:
                 data['last_time'] = d['last_time']
-            if 'last_addr' in d:
-                data['last_addr'] = d['last_addr']
+            # if 'last_addr' in d:
+            #     data['last_addr'] = d['last_addr']
             if 'group_rss' in d:
                 data['group_rss'] = d['group_rss']
             if 'group_mode' in d:
@@ -258,11 +258,11 @@ async def get_rss_news(rss_url):
         return news_list
 
     last_time = data['last_time'][rss_url]
-    last_addr = []
-    if rss_url in data['last_addr']:
-        last_addr = data['last_addr'][rss_url]
+    # last_addr = []
+    # if rss_url in data['last_addr']:
+    #     last_addr = data['last_addr'][rss_url]
     isnew = False
-    new_last_addr = []
+    # new_last_addr = []
     news_dict = db.get(rss_url, {})
     for item in feed["entries"]:
         published_time = get_published_time(item)
@@ -294,10 +294,10 @@ async def get_rss_news(rss_url):
 
             news_list.append(news)
             # 将最后一次获取到的所有链接添加进数组
-            new_last_addr.append(item['id'])
+            # new_last_addr.append(item['id'])
     if isnew:
         data['last_time'][rss_url] = get_latest_time(feed['entries'])
-        data['last_addr'][rss_url] = new_last_addr
+        # data['last_addr'][rss_url] = new_last_addr
         last_time_f = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(data['last_time'][rss_url]))
         sv.logger.info("[rss]存在新的推送，已更新完成，最后更新时间:{}".format(last_time_f))
     return news_list
