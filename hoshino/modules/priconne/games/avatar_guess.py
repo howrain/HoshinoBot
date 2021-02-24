@@ -12,9 +12,13 @@ from hoshino import Service, util
 from hoshino.modules.priconne import _pcr_data, chara
 from hoshino.typing import CQEvent
 from hoshino.typing import MessageSegment as Seg
+from PIL import Image
+from io import BytesIO
+import base64
 
 from . import GameMaster
 
+LH_SIDE_LENGTH = 75
 PATCH_SIZE = 32
 ONE_TURN_TIME = 20
 DB_PATH = os.path.expanduser("~/.hoshino/pcr_avatar_guess.db")
@@ -45,7 +49,7 @@ async def description_guess_group_ranking(bot, ev: CQEvent):
     await bot.send(ev, "\n".join(msg))
 
 
-@sv.on_fullmatch("猜头像")
+@sv.on_fullmatch(("猜头像","猜立绘"))
 async def avatar_guess(bot, ev: CQEvent):
     if gm.is_playing(ev.group_id):
         await bot.finish(ev, "游戏仍在进行中…")
@@ -55,17 +59,38 @@ async def avatar_guess(bot, ev: CQEvent):
         while chara.is_npc(game.answer):
             game.answer = random.choice(ids)
         c = chara.fromid(game.answer)
-        img = c.icon.open()
-        w, h = img.size
-        l = random.randint(0, w - PATCH_SIZE)
-        u = random.randint(0, h - PATCH_SIZE)
-        cropped = img.crop((l, u, l + PATCH_SIZE, u + PATCH_SIZE))
-        cropped = Seg.image(util.pic2b64(cropped))
-        await bot.send(ev, f"猜猜这个图片是哪位角色头像的一部分?({ONE_TURN_TIME}s后公布答案) {cropped}")
+
+        PIC_PATH = os.path.join(os.path.dirname(__file__), 'fullcard')
+        PIC_PATH=os.path.join(PIC_PATH,f'{game.answer}31.png')
+        #判断是否有完整立绘
+        lh_flag = 0
+        if os.path.exists(PIC_PATH):
+            img = Image.open(PIC_PATH)
+            bio = BytesIO()
+            img.save(bio, format='PNG')
+            base64_str = 'base64://' + base64.b64encode(bio.getvalue()).decode()
+            mes = f"[CQ:image,file={base64_str}]"
+            lh_flag = 1
+            img_type = '立绘'
+            w, h = img.size
+            l = random.randint(0, w - LH_SIDE_LENGTH)
+            u = random.randint(0, h - LH_SIDE_LENGTH)
+            cropped = img.crop((l, u, l + LH_SIDE_LENGTH, u + LH_SIDE_LENGTH))
+            cropped = Seg.image(util.pic2b64(cropped))
+        else:
+            mes = c.icon.cqcode
+            img_type = '头像'
+            img = c.icon.open()
+            w, h = img.size
+            l = random.randint(0, w - PATCH_SIZE)
+            u = random.randint(0, h - PATCH_SIZE)
+            cropped = img.crop((l, u, l + PATCH_SIZE, u + PATCH_SIZE))
+            cropped = Seg.image(util.pic2b64(cropped))
+        await bot.send(ev, f"猜猜这个图片是哪位角色{img_type}的一部分?({ONE_TURN_TIME}s后公布答案) {cropped}")
         await asyncio.sleep(ONE_TURN_TIME)
         if game.winner:
             return
-    await bot.send(ev, f"正确答案是：{c.name} {c.icon.cqcode}\n很遗憾，没有人答对~")
+    await bot.send(ev, f"正确答案是：{c.name} {mes}\n很遗憾，没有人答对~")
 
 
 @sv.on_message()
