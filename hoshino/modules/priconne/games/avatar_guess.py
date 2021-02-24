@@ -49,7 +49,7 @@ async def description_guess_group_ranking(bot, ev: CQEvent):
     await bot.send(ev, "\n".join(msg))
 
 
-@sv.on_fullmatch(("猜头像","猜立绘"))
+@sv.on_fullmatch(("猜头像", "猜立绘"))
 async def avatar_guess(bot, ev: CQEvent):
     if gm.is_playing(ev.group_id):
         await bot.finish(ev, "游戏仍在进行中…")
@@ -61,10 +61,17 @@ async def avatar_guess(bot, ev: CQEvent):
         c = chara.fromid(game.answer)
 
         PIC_PATH = os.path.join(os.path.dirname(__file__), 'fullcard')
-        PIC_PATH=os.path.join(PIC_PATH,f'{game.answer}31.png')
-        #判断是否有完整立绘
-        lh_flag = 0
-        if os.path.exists(PIC_PATH):
+        PIC_PATH = os.path.join(PIC_PATH, f'{game.answer}31.png')
+        # 判断猜头像还是猜角色
+        lh_flag = False
+        if ev.message == "猜头像":
+            lh_flag = False
+            pass
+        else:
+            lh_flag = True
+            pass
+
+        if os.path.exists(PIC_PATH) and lh_flag == True:
             img = Image.open(PIC_PATH)
             bio = BytesIO()
             img.save(bio, format='PNG')
