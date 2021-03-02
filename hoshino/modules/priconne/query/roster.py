@@ -19,10 +19,11 @@ sv = Service('pcr-roster', help_=ROSTER_HELP, bundle='花名册')
 # 修改花名册功能 让万能的群友修改角色昵称
 @sv.on_prefix('花名册', 'roster')
 async def roster_cmd(bot, ev: CQEvent):
-    msg = ''
-    group_id = ev.group_id
+    sv.logger.info('花名册功能')
+    # msg = ''
+    # group_id = ev.group_id
     args = ev.message.extract_plain_text().split()
-    print(args)
+    sv.logger.info(args)
     if len(args) == 0:
         msg = ROSTER_HELP
         await bot.send(ev, msg)
