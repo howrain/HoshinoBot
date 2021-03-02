@@ -1,9 +1,9 @@
 import os
 import json
 
-
 CHARA_NAME = {}
 CHARA_PROFILE = {}
+
 
 class CharaMaster:
     def __init__(self) -> None:
@@ -18,7 +18,6 @@ class CharaMaster:
                 CHARA_NAME[chara_id].remove("")
         self.__save_pcr_data()
 
-
     def __load_pcr_data(self) -> None:
         # load CHARA_NAME
         with open(self.chara_name_path, 'r', encoding='utf-8') as f:
@@ -26,7 +25,7 @@ class CharaMaster:
         global CHARA_NAME
         for id in chara_name_str:
             CHARA_NAME[int(id)] = chara_name_str[id]
-        
+
         # load CHARA_PROFILE
         with open(self.chara_profile_path, 'r', encoding='utf-8') as f:
             chara_profile_str = json.load(f)
@@ -34,18 +33,16 @@ class CharaMaster:
         for id in chara_profile_str:
             CHARA_PROFILE[int(id)] = chara_profile_str[id]
 
-
     def __save_pcr_data(self) -> None:
         # save CHARA_NAME
         with open(self.chara_name_path, 'w+', encoding='utf-8') as f:
             json.dump(CHARA_NAME, f, indent=4, ensure_ascii=False)
 
         # save CHARA_PROFILE
-        with open(self.chara_profile_path, 'w+' , encoding='utf-8') as f:
+        with open(self.chara_profile_path, 'w+', encoding='utf-8') as f:
             json.dump(CHARA_PROFILE, f, indent=4, ensure_ascii=False)
 
-
-    def check_nickname(self, id:int, nickname:str):
+    def check_nickname(self, id: int, nickname: str):
         '''
         Return true if nickname already existed.
         '''
@@ -57,16 +54,36 @@ class CharaMaster:
         else:
             return False
 
-    def add_chara(self, id:int, names:list) -> None:
+    def add_chara(self, id: int, names: list) -> None:
         CHARA_NAME[id] = names
         self.__save_pcr_data()
 
+    def get_nicknames(self, id: int):
+        return CHARA_NAME[id]
 
-    def add_nickname(self, id:int, nickname:str) -> None:
+    def add_nickname(self, id: int, nickname: str) -> None:
         CHARA_NAME[id].append(nickname)
         self.__save_pcr_data()
+
+    def remove_nickname(self, id: int, nickname: str):
+        nicknames = CHARA_NAME[id]
+        remove_name = None
+        for index, name in enumerate(nicknames):
+            if name == nickname:
+                remove_name = CHARA_NAME[id].pop(index)
+                self.__save_pcr_data()
+                return remove_name
+        return remove_name
+
+    def default_nickname(self, id: int, nickname: str):
+        nicknames = CHARA_NAME[id]
+        for index, name in enumerate(nicknames):
+            if name == nickname:
+                CHARA_NAME[id][0], CHARA_NAME[id][index] = CHARA_NAME[id][index], CHARA_NAME[id][0]
+                self.__save_pcr_data()
+                return True
+        return False
 
 
 # CHARA_NAME will be loaded while init
 chara_master = CharaMaster()
-
