@@ -44,7 +44,7 @@ async def roster_cmd(bot, ev: CQEvent):
             msg = f'兰德索尔似乎没有叫"{origin_name}"的人...'
             await bot.send(ev, msg)
         else:
-            chara_name = chara.fromid(id_)
+            chara_name = chara.fromid(id_).name
             result = chara.add_nickname(id_, nick_name)
             if result:
                 msg = f'角色"{chara_name}"添加昵称"{nick_name}"成功...'
@@ -64,7 +64,7 @@ async def roster_cmd(bot, ev: CQEvent):
             msg = f'兰德索尔似乎没有叫"{origin_name}"的人...'
             await bot.send(ev, msg)
         else:
-            chara_name = chara.fromid(id_)
+            chara_name = chara.fromid(id_).name
             nicknames = chara.get_nicknames(id_)
             nicknames_len = len(nicknames)
             if nicknames_len == 1:
@@ -89,7 +89,7 @@ async def roster_cmd(bot, ev: CQEvent):
             msg = f'兰德索尔似乎没有叫"{origin_name}"的人...'
             await bot.send(ev, msg)
         else:
-            chara_name = chara.fromid(id_)
+            chara_name = chara.fromid(id_).name
             msg = f'"{chara_name}"的昵称列表为:\n'
             msg += f'索引\t昵称\n'
             nicknames = chara.get_nicknames(id_)
@@ -111,7 +111,7 @@ async def roster_cmd(bot, ev: CQEvent):
             msg = f'兰德索尔似乎没有叫"{origin_name}"的人...'
             await bot.send(ev, msg)
         else:
-            chara_name = chara.fromid(id_)
+            chara_name = chara.fromid(id_).name
             reuslt = chara.default_nickname(id_, nick_name)
             if reuslt:
                 msg = f'设置角色"{chara_name}"默认昵称"{nick_name}"成功...'
