@@ -17,7 +17,7 @@ sv = Service('pcr-roster', help_=ROSTER_HELP, bundle='pcr查询')
 
 
 # 修改花名册功能 让万能的群友修改角色昵称
-@sv.on_prefix('花名册')
+@sv.on_prefix('花名册','roster')
 async def roster_cmd(bot, ev: CQEvent):
     # sv.logger.info('花名册功能')
     # msg = ''
