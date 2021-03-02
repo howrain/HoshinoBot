@@ -13,7 +13,7 @@ ROSTER_HELP = '''花名册角色昵称补全计划
 花名册 设置默认昵称 角色昵称 默认的角色昵称 / roster default arg1 arg2
 (角色昵称参数可以识别角色下所有昵称，建议先使用"谁是xx"来识别角色昵称，或者"花名册 列表 角色昵称"来识别角色所有昵称)
 '''
-sv = Service('pcr-roster', help_=ROSTER_HELP, bundle='花名册补全')
+sv = Service('pcr-roster', help_=ROSTER_HELP, bundle='pcr查询')
 
 
 # 修改花名册功能 让万能的群友修改角色昵称
