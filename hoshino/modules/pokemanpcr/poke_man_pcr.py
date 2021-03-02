@@ -35,9 +35,9 @@ BLACKLIST_CARD = ['icon_unit_100031.png']
 MIX_PROBABILITY = {str(list((-1, -1))): [0.8, 0.194, 0.006], str(list((-1, 0))): [0.44, 0.5, 0.06], str(list((-1, 1))): [0.55, 0.3, 0.1],
                    str(list((0, 0))): [0.1, 0.8, 0.1],       str(list((0, 1))): [0.3, 0.5, 0.2],      str(list((1, 1))): [0.15, 0.25, 0.6]}
 # 一键合成概率
-OK_MIX_PROBABILITY = {str(list((-1, -1))): [0.846, 0.15, 0.004], str(list((-1, 0))): [0.56, 0.4, 0.04], str(list((-1, 1))): [0.68, 0.24, 0.08],
-                      str(list((0, 0))): [0.33, 0.6, 0.07],       str(list((0, 1))): [0.44, 0.4, 0.16],      str(list((1, 1))): [0.2, 0.3, 0.5]}
-
+# OK_MIX_PROBABILITY = {str(list((-1, -1))): [0.846, 0.15, 0.004], str(list((-1, 0))): [0.56, 0.4, 0.04], str(list((-1, 1))): [0.68, 0.24, 0.08],
+#                       str(list((0, 0))): [0.33, 0.6, 0.07],       str(list((0, 1))): [0.44, 0.4, 0.16],      str(list((1, 1))): [0.2, 0.3, 0.5]}
+OK_MIX_PROBABILITY = MIX_PROBABILITY
 PRELOAD = True                    # 是否启动时直接将所有图片加载到内存中以提高查看仓库的速度(增加约几M内存消耗)
 
 sv = Service('poke-man-pcr', bundle='pcr娱乐', help_='''
