@@ -97,7 +97,7 @@ async def roster_cmd(bot, ev: CQEvent):
                 if index == len(nicknames):
                     msg += f'{index}\t{name}'
                 else:
-                    msg += f'{index}\t{name}'
+                    msg += f'{index}\t{name}\n'
             await bot.send(ev, msg, at_sender=True)
     elif args[0] == '设置默认名称' or args[0] == '设置默认昵称' or args[0] == 'default':
         if len(args) != 3:
