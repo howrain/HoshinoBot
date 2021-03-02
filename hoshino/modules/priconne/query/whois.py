@@ -55,7 +55,7 @@ async def roster_cmd(bot, ev: CQEvent):
     msg = ''
     group_id = ev.group_id
     args = ev.message.extract_plain_text().split()
-
+    print(args)
     if len(args) == 0:
         msg = ROSTER_HELP
         await bot.send(ev, msg)
@@ -75,7 +75,13 @@ async def roster_cmd(bot, ev: CQEvent):
             msg = f'兰德索尔似乎没有叫"{origin_name}"的人...'
             await bot.send(ev, msg)
         else:
-            chara.add_nickname(id_, nick_name)
+            chara_name = chara.fromid(id_)
+            result = chara.add_nickname(id_, nick_name)
+            if result:
+                msg = f'角色"{chara_name}"添加昵称"{nick_name}"成功...'
+            else:
+                msg=f'角色"{chara_name}"已存在昵称"{nick_name}"...'
+            await bot.send(ev, msg, at_sender=True)
             pass
     elif args[0] == '删除' or args[0] == 'remove':
         if len(args) != 3:
@@ -101,7 +107,7 @@ async def roster_cmd(bot, ev: CQEvent):
                 msg = f'成功删除"{chara_name}"的昵称"{remove_name}"...'
                 await bot.send(ev, msg, at_sender=True)
             else:
-                msg = f'删除"{chara_name}"的昵称"{remove_name}"好像失败了...'
+                msg = f'角色"{chara_name}"不存在昵称"{remove_name}"...'
                 await bot.send(ev, msg, at_sender=True)
     elif args[0] == '列表' or args[0] == 'list':
         if len(args) != 2:
@@ -142,5 +148,5 @@ async def roster_cmd(bot, ev: CQEvent):
                 msg = f'设置角色"{chara_name}"默认昵称"{nick_name}"成功...'
                 await bot.send(ev, msg, at_sender=True)
             else:
-                msg = f'设置角色"{chara_name}"默认昵称"{nick_name}"好像出错了...'
+                msg = f'角色"{chara_name}"不存在昵称"{nick_name}"...'
                 await bot.send(ev, msg, at_sender=True)
