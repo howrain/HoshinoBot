@@ -7,9 +7,11 @@ from PIL import Image
 from hoshino import Service, aiorequests
 from hoshino.typing import HoshinoBot, CQEvent 
 from .data_source import generate_gif
-from .._res import Res as R
+from ._res import Res as R
 
-sv = Service('Rua')
+HELP_MSG='''###rua搓头###
+rua+@某人'''
+sv = Service('Rua', bundle='pcr娱乐', help_=HELP_MSG)
 data_dir = path.join(path.dirname(__file__), 'data')
 
 @sv.on_message()
