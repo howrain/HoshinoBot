@@ -48,6 +48,7 @@ async def roster_cmd(bot, ev: CQEvent):
             result = chara.add_nickname(id_, nick_name)
             if result:
                 msg = f'角色"{chara_name}"添加昵称"{nick_name}"成功...'
+                chara.roster.update()
             else:
                 msg=f'角色"{chara_name}"已存在昵称"{nick_name}"...'
             await bot.send(ev, msg, at_sender=True)
@@ -74,6 +75,7 @@ async def roster_cmd(bot, ev: CQEvent):
             remove_name = chara.remove_nickname(id_, nick_name)
             if remove_name:
                 msg = f'成功删除"{chara_name}"的昵称"{remove_name}"...'
+                chara.roster.update()
                 await bot.send(ev, msg, at_sender=True)
             else:
                 msg = f'角色"{chara_name}"不存在昵称"{remove_name}"...'
@@ -115,6 +117,7 @@ async def roster_cmd(bot, ev: CQEvent):
             reuslt = chara.default_nickname(id_, nick_name)
             if reuslt:
                 msg = f'设置角色"{chara_name}"默认昵称"{nick_name}"成功...'
+                chara.roster.update()
                 await bot.send(ev, msg, at_sender=True)
             else:
                 msg = f'角色"{chara_name}"不存在昵称"{nick_name}"...'
