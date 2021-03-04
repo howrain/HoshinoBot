@@ -1,7 +1,7 @@
 import json
 from hoshino import config, Service, priv
 from hoshino.typing import CQEvent
-from .. import chara
+from hoshino.modules.priconne import chara
 from .data import *
 
 sv = Service('wiki', help_='''
