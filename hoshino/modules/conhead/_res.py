@@ -95,7 +95,7 @@ class Res:
         ftype = guess_mime(data)
         if not ftype or not ftype.startswith('image'):
             raise ValueError('不是有效的图片类型')
-        fn = get_md5(data)
+        fn = get_md5(data)+".png"
         save_path = path.join(cls.img_cache_dir, fn)
         with open(save_path, 'wb') as f:
             f.write(data)
