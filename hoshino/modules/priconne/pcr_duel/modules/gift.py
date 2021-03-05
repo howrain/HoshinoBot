@@ -6,16 +6,19 @@ from ..counter.DuelCounter import *
 from ..pcr_duel import DuelJudger
 from ..pcr_duel import DailyAmountLimiter
 from ..config.duelconfig import *
+from ... import chara
 
 duel_judger = DuelJudger()
+
+
 class GiftChange:
     def __init__(self):
-        self.giftchange_on={}
-        self.waitchange={}
+        self.giftchange_on = {}
+        self.waitchange = {}
         self.isaccept = {}
         self.changeid = {}
 
- #礼物交换开关
+    # 礼物交换开关
     def get_on_off_giftchange_status(self, gid):
         return self.giftchange_on[gid] if self.giftchange_on.get(gid) is not None else False
 
@@ -24,7 +27,8 @@ class GiftChange:
 
     def turn_off_giftchange(self, gid):
         self.giftchange_on[gid] = False
-    #礼物交换发起开关
+
+    # 礼物交换发起开关
     def get_on_off_waitchange_status(self, gid):
         return self.waitchange[gid] if self.waitchange.get(gid) is not None else False
 
@@ -33,7 +37,8 @@ class GiftChange:
 
     def turn_off_waitchange(self, gid):
         self.waitchange[gid] = False
-    #礼物交换是否接受开关
+
+    # 礼物交换是否接受开关
     def turn_on_accept_giftchange(self, gid):
         self.isaccept[gid] = True
 
@@ -42,7 +47,8 @@ class GiftChange:
 
     def get_isaccept_giftchange(self, gid):
         return self.isaccept[gid] if self.isaccept[gid] is not None else False
-    #记录礼物交换请求接收者id
+
+    # 记录礼物交换请求接收者id
     def init_changeid(self, gid):
         self.changeid[gid] = []
 
@@ -51,25 +57,32 @@ class GiftChange:
 
     def get_changeid(self, gid):
         return self.changeid[gid] if self.changeid.get(gid) is not None else 0
+
+
 gift_change = GiftChange()
 
 daily_gift_limiter = DailyAmountLimiter("gift", GIFT_DAILY_LIMIT, RESET_HOUR)
 daily_date_limiter = DailyAmountLimiter("date", DATE_DAILY_LIMIT, RESET_HOUR)
 
-@sv.on_fullmatch(['礼物系统帮助','礼物帮助'])
+
+@sv.on_fullmatch(['礼物系统帮助', '礼物帮助'])
 async def gift_help(bot, ev: CQEvent):
-    msg='''
+    msg = '''
 ╔                                        ╗  
              礼物系统帮助
 1. 查好感+女友名
 2. 贵族约会+女友名 (1天限1次)
 3. 买礼物  (300金币，一天限5次）
-4. 送礼+女友名+礼物 空格隔开
+4.1 送礼+女友名+礼物 空格隔开
+4.2 批量送礼+礼物数量+女友名+礼物名 中间用空格隔开
 5. 用xx与@xx交换xx
 6. 买情报+女友名  (500金币，可了解女友喜好)
 7. 我的礼物 (查询礼物仓库)
 8. 好感列表
 9. 重置礼物交换(限管理，交换卡住时用)
+超管功能
+1.为(.*)发放(\d+)个(.*)
+2.发放补偿(.*)个(金币|声望|公主之心|)
 注:
 通过约会或者送礼可以提升好感
 决斗输掉某女友会扣除50好感，不够则被抢走
@@ -79,7 +92,7 @@ async def gift_help(bot, ev: CQEvent):
     await bot.send(ev, msg)
 
 
-@sv.on_prefix(['查好感','查询好感'])
+@sv.on_prefix(['查好感', '查询好感'])
 async def girl_story(bot, ev: CQEvent):
     args = ev.message.extract_plain_text().split()
     gid = ev.group_id
@@ -95,16 +108,17 @@ async def girl_story(bot, ev: CQEvent):
     if cid not in cidlist:
         await bot.finish(ev, '该女友不在你的身边哦。', at_sender=True)
 
-    if duel._get_favor(gid,uid,cid)== None:
-        duel._set_favor(gid,uid,cid,0)
-    favor= duel._get_favor(gid,uid,cid)
-    relationship,text = get_relationship(favor)
+    if duel._get_favor(gid, uid, cid) == None:
+        duel._set_favor(gid, uid, cid, 0)
+    favor = duel._get_favor(gid, uid, cid)
+    relationship, text = get_relationship(favor)
     c = duel_chara.fromid(cid)
     nvmes = get_nv_icon(cid)
     msg = f'\n{c.name}对你的好感是{favor}\n你们的关系是{relationship}\n“{text}”\n{nvmes}'
     await bot.send(ev, msg, at_sender=True)
 
-@sv.on_prefix(['每日约会','女友约会', '贵族约会'])
+
+@sv.on_prefix(['每日约会', '女友约会', '贵族约会'])
 async def daily_date(bot, ev: CQEvent):
     args = ev.message.extract_plain_text().split()
     gid = ev.group_id
@@ -119,40 +133,41 @@ async def daily_date(bot, ev: CQEvent):
     cidlist = duel._get_cards(gid, uid)
     if cid not in cidlist:
         await bot.finish(ev, '该女友不在你的身边哦。', at_sender=True)
-    guid = gid ,uid
+    guid = gid, uid
     if not daily_date_limiter.check(guid):
         await bot.finish(ev, '今天已经和女友约会过了哦，明天再来吧。', at_sender=True)
 
-    loginnum_ = ['1','2', '3', '4']
+    loginnum_ = ['1', '2', '3', '4']
     r_ = [0.2, 0.4, 0.35, 0.05]
     sum_ = 0
     ran = random.random()
     for num, r in zip(loginnum_, r_):
         sum_ += r
-        if ran < sum_ :break
-    Bonus = {'1':[5,Date5],
-             '2':[10,Date10],
-             '3':[15,Date15],
-             '4':[20,Date20]
-            }
+        if ran < sum_: break
+    Bonus = {'1': [5, Date5],
+             '2': [10, Date10],
+             '3': [15, Date15],
+             '4': [20, Date20]
+             }
     favor = Bonus[num][0]
     text = random.choice(Bonus[num][1])
-    duel._add_favor(gid,uid,cid,favor)
+    duel._add_favor(gid, uid, cid, favor)
     c = duel_chara.fromid(cid)
     nvmes = get_nv_icon(cid)
-    current_favor = duel._get_favor(gid,uid,cid)
+    current_favor = duel._get_favor(gid, uid, cid)
     relationship = get_relationship(current_favor)[0]
     msg = f'\n\n{text}\n\n你和{c.name}的好感上升了{favor}点\n她现在对你的好感是{current_favor}点\n你们现在的关系是{relationship}\n{nvmes}'
     daily_date_limiter.increase(guid)
     await bot.send(ev, msg, at_sender=True)
 
-@sv.on_fullmatch(['抽礼物','买礼物','购买礼物'])
+
+@sv.on_fullmatch(['抽礼物', '买礼物', '购买礼物'])
 async def buy_gift(bot, ev: CQEvent):
     gid = ev.group_id
     uid = ev.user_id
     duel = DuelCounter()
     score_counter = ScoreCounter2()
-    guid = gid ,uid
+    guid = gid, uid
     if duel_judger.get_on_off_status(ev.group_id):
         msg = '现在正在决斗中哦，请决斗后再来买礼物吧。'
         await bot.finish(ev, msg, at_sender=True)
@@ -163,11 +178,12 @@ async def buy_gift(bot, ev: CQEvent):
         await bot.finish(ev, f'今天购买礼物已经超过{GIFT_DAILY_LIMIT}次了哦，明天再来吧。', at_sender=True)
     select_gift = random.choice(list(GIFT_DICT.keys()))
     gfid = GIFT_DICT[select_gift]
-    duel._add_gift(gid,uid,gfid)
+    duel._add_gift(gid, uid, gfid)
     msg = f'\n您花费了300金币，\n买到了[{select_gift}]哦，\n欢迎下次惠顾。'
-    score_counter._reduce_score(gid,uid,300)
+    score_counter._reduce_score(gid, uid, 300)
     daily_gift_limiter.increase(guid)
     await bot.send(ev, msg, at_sender=True)
+
 
 @sv.on_prefix(['送礼物', '送礼', '赠送礼物'])
 async def give_gift(bot, ev: CQEvent):
@@ -202,6 +218,51 @@ async def give_gift(bot, ev: CQEvent):
     msg = f'\n{c.name}:“{text}”\n\n你和{c.name}的好感上升了{favor}点\n她现在对你的好感是{current_favor}点\n你们现在的关系是{relationship}\n{nvmes}'
     await bot.send(ev, msg, at_sender=True)
 
+
+@sv.on_prefix(['批量送礼','批量送礼物'])
+async def give_gift(bot, ev: CQEvent):
+    args = ev.message.extract_plain_text().split()
+    gid = ev.group_id
+    uid = ev.user_id
+    duel = DuelCounter()
+    num = int(args[0])
+    if num <= 0:
+        await bot.finish(ev, "数量输入不正确哦")
+    # if duel._get_BAN(gid, uid) == 1:
+    #     await bot.send(ev, '您的账号触发安全机制，已被封停，请联系管理员处理！', at_sender=True)
+    #     return
+    if gift_change.get_on_off_giftchange_status(ev.group_id):
+        await bot.finish(ev, "有正在进行的礼物交换，礼物交换结束再来送礼物吧。")
+    if len(args) != 3:
+        await bot.finish(ev, '请输入 批量送礼+礼物数量+女友名+礼物名 中间用空格隔开。', at_sender=True)
+    name = args[1]
+    cid = chara.name2id(name)
+    if cid == 1000:
+        await bot.finish(ev, '请输入正确的女友名。', at_sender=True)
+    cidlist = duel._get_cards(gid, uid)
+    if cid not in cidlist:
+        await bot.finish(ev, '该女友不在你的身边哦。', at_sender=True)
+    gift = args[2]
+    if gift not in GIFT_DICT.keys():
+        await bot.finish(ev, '请输入正确的礼物名。', at_sender=True)
+    gfid = GIFT_DICT[gift]
+    if gfid > 10:
+        await bot.finish(ev, '这个物品不能作为礼物哦。', at_sender=True)
+    if duel._get_gift_num(gid, uid, gfid) < num:
+        await bot.finish(ev, '你的这件礼物的库存不足哦。', at_sender=True)
+    x = num
+    favor, text = check_gift(cid, gfid)
+    while (x):
+        duel._reduce_gift(gid, uid, gfid)
+        duel._add_favor(gid, uid, cid, favor)
+        x -= 1
+    current_favor = duel._get_favor(gid, uid, cid)
+    relationship = get_relationship(current_favor)[0]
+    c = chara.fromid(cid)
+    msg = f'\n{c.name}:“{text}”\n\n你和{c.name}的好感上升了{favor * num}点\n她现在对你的好感是{current_favor}点\n你们现在的关系是{relationship}\n{c.icon.cqcode}'
+    await bot.send(ev, msg, at_sender=True)
+
+
 @sv.on_fullmatch(['我的礼物', '礼物仓库', '查询礼物', '礼物列表'])
 async def my_gift(bot, ev: CQEvent):
     gid = ev.group_id
@@ -221,6 +282,7 @@ async def my_gift(bot, ev: CQEvent):
         await bot.finish(ev, '您现在没有礼物哦，快去发送 买礼物 购买吧。', at_sender=True)
     msg += giftmsg
     await bot.send(ev, msg, at_sender=True)
+
 
 @sv.on_rex(f'^用(.*)与(.*)交换(.*)$')
 async def change_gift(bot, ev: CQEvent):
@@ -284,6 +346,7 @@ async def change_gift(bot, ev: CQEvent):
     gift_change.turn_off_giftchange(gid)
     await bot.finish(ev, msg, at_sender=True)
 
+
 @sv.on_fullmatch('接受交换')
 async def giftchangeaccept(bot, ev: CQEvent):
     gid = ev.group_id
@@ -294,6 +357,7 @@ async def giftchangeaccept(bot, ev: CQEvent):
             gift_change.turn_off_waitchange(gid)
             gift_change.turn_on_accept_giftchange(gid)
 
+
 @sv.on_fullmatch('拒绝交换')
 async def giftchangerefuse(bot, ev: CQEvent):
     gid = ev.group_id
@@ -303,6 +367,7 @@ async def giftchangerefuse(bot, ev: CQEvent):
             await bot.send(ev, msg, at_sender=True)
             gift_change.turn_off_waitchange(gid)
             gift_change.turn_off_accept_giftchange(gid)
+
 
 @sv.on_prefix(['购买情报', '买情报'])
 async def buy_information(bot, ev: CQEvent):
@@ -347,8 +412,9 @@ async def buy_information(bot, ev: CQEvent):
             continue
     c = duel_chara.fromid(cid)
     nvmes = get_nv_icon(cid)
-    msg = f'\n花费了500金币，您买到了以下情报：\n{c.name}最喜欢的礼物是:\n{favorite}\n喜欢的礼物是:\n{like}一般喜欢的礼物是:\n{normal}不喜欢的礼物是:\n{dislike}{nvmes}'
+    msg = f'\n花费了500金币，您买到了以下情报：\n{c.name}特别喜欢的礼物是:\n公主之心\n最喜欢的礼物是:\n{favorite}\n喜欢的礼物是:\n{like}一般喜欢的礼物是:\n{normal}不喜欢的礼物是:\n{dislike}{nvmes}'
     await bot.send(ev, msg, at_sender=True)
+
 
 @sv.on_fullmatch('重置礼物交换')
 async def init_change(bot, ev: CQEvent):
@@ -357,6 +423,7 @@ async def init_change(bot, ev: CQEvent):
     gift_change.turn_off_giftchange(ev.group_id)
     msg = '已重置本群礼物交换状态！'
     await bot.send(ev, msg, at_sender=True)
+
 
 @sv.on_fullmatch(['好感列表', '女友好感列表'])
 async def get_favorlist(bot, ev: CQEvent):
@@ -385,4 +452,63 @@ async def get_favorlist(bot, ev: CQEvent):
         favor = rows_by_favor[i]["favor"]
         c = duel_chara.fromid(cid)
         msg += f'{c.name}:{favor}点\n'
+    await bot.send(ev, msg, at_sender=True)
+
+@sv.on_rex(f'^为(.*)发放(\d+)个(.*)$')
+async def cheat_DJ(bot, ev: CQEvent):
+    if not priv.check_priv(ev, priv.SUPERUSER):
+        await bot.finish(ev, '不要想着走捷径哦。', at_sender=True)
+    gid = ev.group_id
+    match = ev['match']
+    try:
+        id = int(match.group(1))
+    except ValueError:
+        id = int(ev.message[1].data['qq'])
+    except:
+        await bot.finish(ev, '参数格式错误')
+    num = int(match.group(2))
+    select_gift = match.group(3)
+    duel = DuelCounter()
+    score_counter = ScoreCounter2()
+    if select_gift not in GIFT_DICT.keys():
+        await bot.finish(ev, '请输入正确的礼物名。', at_sender=True)
+    if duel._get_level(gid, id) == 0:
+        await bot.finish(ev, '该用户还未在本群创建贵族哦。', at_sender=True)
+    gfid = GIFT_DICT[select_gift]
+    x = num
+    while (x):
+        duel._add_gift(gid, id, gfid)
+        x -= 1
+    msg = f'已为[CQ:at,qq={id}]发放{num}个{select_gift}。'
+    await bot.send(ev, msg)
+
+@sv.on_rex(r'^发放补偿(.*)个(金币|声望|公主之心|)$')
+async def BC(bot, ev: CQEvent):
+    if not priv.check_priv(ev, priv.SUPERUSER):
+        await bot.finish(ev, '无权进行该操作！', at_sender=True)
+    gid = ev.group_id
+    duel = DuelCounter()
+    score_dict = {}
+    match = (ev['match'])
+    score_counter = ScoreCounter2()
+    umlist = duel._get_uid_list(gid)
+    num = int(match.group(1))
+    Lei = (match.group(2))
+    for s in range(len(umlist)):
+        uid = int(umlist[s])
+        level = duel._get_level(gid, uid)
+        guid = gid, uid
+        if Lei == '金币':
+            score_counter._add_score(gid, uid, num)
+            msg = f'已为本群发放{num}金币补偿！'
+        if Lei == '声望':
+            score_counter._add_prestige(gid, uid, num)
+            msg = f'已为本群发放{num}声望补偿！'
+        if Lei == '公主之心':
+            msg = f'已为本群发放{num}公主之心补偿！'
+            i = num
+            while (i):
+                duel._add_gift(gid, uid, 10)
+                i = i - 1
+        s += 1
     await bot.send(ev, msg, at_sender=True)
