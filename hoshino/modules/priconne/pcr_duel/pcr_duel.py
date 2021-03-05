@@ -1071,7 +1071,7 @@ async def nobleduel(bot, ev: CQEvent):
 
     await bot.send(ev, msg)
     duel_judger.turn_on_support(gid)
-    x = duel._get_weapon(gid) + 1
+    x = n + 1
     deadnum = int(math.floor(random.uniform(1, x)))
     print("死的位置是", deadnum)
     duel_judger.set_deadnum(gid, deadnum)
@@ -1081,10 +1081,10 @@ async def nobleduel(bot, ev: CQEvent):
     duel_judger.turn_on_fire(gid)
     duel_judger.turn_off_hasfired(gid)
     msg = f'支持环节结束，下面请决斗双方轮流[开枪]。\n[CQ:at,qq={id1}]先开枪，30秒未开枪自动认输'
-
+    w = n
     await bot.send(ev, msg)
     n = 1
-    while (n <= duel._get_weapon(gid)):
+    while (n <= w):
         wait_n = 0
         while (wait_n < 30):
             if duel_judger.get_on_off_hasfired_status(gid):
@@ -1221,7 +1221,7 @@ async def nobleduel(bot, ev: CQEvent):
     level_winner = duel._get_level(gid, winner)
     wingold = 800 + (level_loser * 100)
     if is_overtime == 1:
-        if n != duel._get_weapon(gid):
+        if n != w:
             wingold = 100
     score_counter._add_score(gid, winner, wingold)
     msg = f'[CQ:at,qq={winner}]本次决斗胜利获得了{wingold}金币。'
@@ -1232,9 +1232,10 @@ async def nobleduel(bot, ev: CQEvent):
     if winprestige != None:
         level_cha = level_loser - level_winner
         level_zcha = max(level_cha, 0)
+        level_zcha = min(level_zcha, 5)
         winSW = WinSWBasics + (level_zcha * 20)
         if is_overtime == 1:
-            if n != duel._get_weapon(gid):
+            if n != w:
                 if level_loser < 6:
                     winSW = 0
                 else:
@@ -1248,6 +1249,7 @@ async def nobleduel(bot, ev: CQEvent):
     if loseprestige != -1:
         level_cha = level_loser - level_winner
         level_zcha = max(level_cha, 0)
+        level_zcha = min(level_zcha, 5)
         LOSESW = LoseSWBasics + (level_zcha * 10)
         score_counter._reduce_prestige(gid, loser, LOSESW)
         msg = f'[CQ:at,qq={loser}]决斗失败使您的声望下降了{LOSESW}点。'
@@ -1270,7 +1272,7 @@ async def nobleduel(bot, ev: CQEvent):
     # 结算下注金币，判定是否为超时局。
 
     if is_overtime == 1:
-        if n != duel._get_weapon(gid):
+        if n != w:
             if level_loser < 6:
                 msg = '认输警告！本局为超时局/认输局，不进行金币结算，支持的金币全部返还。胜者获得的声望为0，金币大幅减少。'
             else:
@@ -1285,10 +1287,11 @@ async def nobleduel(bot, ev: CQEvent):
     # 结算胜场，避免超时局刷胜场
     duel._add_Win(gid, winner)
     winuid = []
-    supportmsg = '金币结算:\n'
+    supportmsg = '本轮决斗结束，没有人支持。'
     winnum = duel_judger.get_duelnum(gid, winner)
 
     if support != 0:
+        supportmsg = '金币结算:\n'
         for uid in support:
             support_id = support[uid][0]
             support_score = support[uid][1]
