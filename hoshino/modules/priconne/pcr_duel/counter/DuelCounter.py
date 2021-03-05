@@ -393,6 +393,13 @@ class DuelCounter:
         except:
             raise Exception('更新表发生错误')
 
+    def _get_uid_list(self, gid):
+        try:
+            r = self._connect().execute("SELECT DISTINCT(UID) FROM LEVELTABLE WHERE GID=? ", (gid,)).fetchall()
+            return [u[0] for u in r] if r else {}
+        except:
+            raise Exception('查找uid表发生错误')
+
     # 妻子部分
 
     def _create_queentable(self):

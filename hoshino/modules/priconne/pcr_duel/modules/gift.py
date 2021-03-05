@@ -219,7 +219,7 @@ async def give_gift(bot, ev: CQEvent):
     await bot.send(ev, msg, at_sender=True)
 
 
-@sv.on_prefix(['批量送礼','批量送礼物'])
+@sv.on_prefix(['批量送礼', '批量送礼物'])
 async def give_gift(bot, ev: CQEvent):
     args = ev.message.extract_plain_text().split()
     gid = ev.group_id
@@ -454,6 +454,7 @@ async def get_favorlist(bot, ev: CQEvent):
         msg += f'{c.name}:{favor}点\n'
     await bot.send(ev, msg, at_sender=True)
 
+
 @sv.on_rex(f'^为(.*)发放(\d+)个(.*)$')
 async def cheat_DJ(bot, ev: CQEvent):
     if not priv.check_priv(ev, priv.SUPERUSER):
@@ -481,6 +482,7 @@ async def cheat_DJ(bot, ev: CQEvent):
         x -= 1
     msg = f'已为[CQ:at,qq={id}]发放{num}个{select_gift}。'
     await bot.send(ev, msg)
+
 
 @sv.on_rex(r'^发放补偿(.*)个(金币|声望|公主之心|)$')
 async def BC(bot, ev: CQEvent):
