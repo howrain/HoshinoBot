@@ -1,3 +1,31 @@
+# 公会战数据查询及自动报刀插件
+
+本插件改自[clanbattle_info](https://github.com/zyujs/clanbattle_info)，实现了app端协议
+
+## 使用方法
+1. 按原有项目配置好项目，cookie留空
+2. **root**过的手机/模拟器打开bigfun登录b站并授权工会战信息获取
+3. 打开/data/data/cn.bigfun/shared_prefs/BF_DATE.xml，将BF-Client-Data和device_number里面的内容复制到配置文件的对应值
+4. 打开sqlite3数据库/data/data/cn.bigfun/databases/bf-db，找到表user中**access_key**字段，将值填入cookie中
+
+# 以下为原项目简介
+
+# 本项目已停止维护
+
+现在打开毕方网页版团队战工具的boss报表页面, 你会在页面下方看到一行字:
+
+>跨日刀会影响到统计数据的精准性，每日0点更新数据，实时数据请在bigfunAPP内查看
+
+由于网页端出刀数据改为只在每日0时更新一次, 本项目已经没有实际使用价值, 所以就此停止维护更新.
+
+请使用本项目的公会转为手动报刀或使用毕方客户端, 当然, 也可以忍受每天0点一口气上报全天的出刀数据.
+
+万事万物总有始终, 感谢各位咸鱼公会的一路陪伴.
+
+愿天堂没有公会战.
+
+R.I.P.
+
 # clanbattle_info
 
 本项目为公主连结国服公会战信息管理插件,适用于HoshinoBot v2. 使用官方团队战工具 (https://www.bigfun.cn/tools/pcrteam/) 数据源.
@@ -31,7 +59,7 @@
 
 - `cookie` 使用游戏账号登录 [公主连结团队战工具](https://www.bigfun.cn/tools/pcrteam/) 生成的文本格式cookie, 需使用浏览器开发者工具获取
 - `push_challenge` 出刀信息推送开关
-- `report_mode` 自动出刀模式,取值可以为 `yobot_standalone` : 独立yobot模式, `yobot_embedded` : 嵌入式yobot模式, `disable` : 关闭自动报刀
+- `report_mode` 自动出刀模式,取值可以为 `yobot_standalone` : 独立yobot模式, `yobot_embedded` : 嵌入式yobot模式, `yobot_plugin`：yobot作为hoshinobot的插件工作，`disable` : 关闭自动报刀
 - `yobot_api` 如果使用 `yobot_standalone` 模式,需填入公会yobotAPI网址
 
 ## 自动报刀模式说明

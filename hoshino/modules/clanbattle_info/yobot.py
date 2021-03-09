@@ -86,7 +86,7 @@ def embedded_yobot_add_challenge(group_id: str, challenge):
         result = clanbattle.challenge(int(group_id), challenge['qqid'], defeat, challenge['damage'], None, previous_day=previous_day)
         msg = 'yobot新增出刀记录:\n' + str(result)
     except Exception as e:
-        msg = 'yobott添加出刀记录失败:\n' + str(e)
+        msg = 'yobot添加出刀记录失败:\n' + str(e)
         return 1, msg
     return 0, msg
 
@@ -250,7 +250,10 @@ async def get_unknown_members_report(group_id: str) -> str:
     if ret != 0:
         return name2qq
 
-    data = await query_data(group_id, "collect-report")
+    data = await query_data(group_id, '/webview/android', {
+        'target': 'gzlj-clan-collect-report/a'
+    })
+    
     if 'code' not in data: #网络错误
         return '网络异常'
     if data['code'] != 0: #cookie错误
